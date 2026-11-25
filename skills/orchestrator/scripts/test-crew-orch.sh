@@ -2079,6 +2079,24 @@ pjcheck 's["pace"]["slots"]["busy"] == 1'
 rm -f "$TMP/find-s1.rc"
 pass
 
+STEP="issue 193 resume passes --terminal from launch.terminal to find, and reads that implementer as live"
+for i in u1 u2; do
+  expect_exit 0 norch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%1\", \"session_id\": \"sid-$i\"}"
+  expect_exit 0 norch stage $i build
+  printf 'the goal of %s\n' $i >"$TMP/g-$i.md"
+  expect_exit 0 norch told $i --file "$TMP/g-$i.md"
+done
+expect_exit 0 norch item u1 set launch "{\"session_name\": \"u1\", \"worktree\": \"$TMP/wt/u1\", \"tab\": \"tmux:%1\", \"session_id\": \"sid-u1\", \"terminal\": \"tmux\"}"
+echo 'tmux:%3 name' >"$TMP/find-u1.txt"
+echo 'tmux:%4 name' >"$TMP/find-u2.txt"
+: >"$TMP/launcher.log"
+expect_exit 0 norch resume
+grep -q '^u1 rejoin: ' "$TMP/out" || fail "u1 not read as live: $(cat "$TMP/out")"
+grep -q '^find u1 .*--terminal tmux' "$TMP/launcher.log" || fail "find of u1 has no --terminal tmux: $(cat "$TMP/launcher.log")"
+grep -q '^find u2 ' "$TMP/launcher.log" || fail "no find of u2: $(cat "$TMP/launcher.log")"
+! grep '^find u2 ' "$TMP/launcher.log" | grep -q -- '--terminal' || fail "find of u2 has --terminal: $(cat "$TMP/launcher.log")"
+pass
+
 STEP="pc1 (5) a wait of another record is not stopped as the old poller"
 expect_exit 0 python3 "$ORCH_PY" --orch pother init
 python3 "$ORCH_PY" --orch pother wait --interval 0.1 --polls 600 >"$TMP/other.out" 2>&1 &

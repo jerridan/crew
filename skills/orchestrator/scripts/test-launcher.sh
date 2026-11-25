@@ -1279,6 +1279,38 @@ rm -f "$STUB_DIR/tmux-list-panes"
 TMUX=/tmp/t,1,0 run find a
 check 'find with no tmux server prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
 
+# find and groups --terminal: the flag wins over the caller's environment.
+reset_stub
+printf '%%7 /dev/ttys921\n' > "$STUB_DIR/tmux-list-panes"
+echo '900041 1 ttys921 claude --name item-1 --model opus' > "$STUB_DIR/ps-extra"
+printf 'S-1 /dev/ttys929\n' > "$STUB_DIR/osa-ttys"
+TERM_PROGRAM=iTerm.app run find item-1
+check 'find with no --terminal on iTerm2 reads iTerm2 only and misses a tmux implementer' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
+TERM_PROGRAM=iTerm.app run find item-1 --terminal tmux
+check 'find --terminal tmux on iTerm2 prints the handle of the tmux implementer' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%7 name' ]; echo $?)
+TMUX=/tmp/t,1,0 run find item-1 --terminal iterm2
+check 'find --terminal iterm2 on tmux reads the osascript stub, not tmux panes' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && grep -sq 'unique id of s' "$STUB_DIR/osa-script"; echo $?)
+printf 'S-1 /dev/ttys921\n' > "$STUB_DIR/osa-ttys"
+TMUX=/tmp/t,1,0 run find item-1 --terminal iterm2
+check 'find --terminal iterm2 on tmux prints the iTerm2 handle' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-1 name' ]; echo $?)
+TERM_PROGRAM=iTerm.app run find item-1 --terminal bogus
+check 'find --terminal bogus exits 2' $([ "$rc" = 2 ]; echo $?)
+TERM_PROGRAM=iTerm.app run groups --terminal bogus
+check 'groups --terminal bogus exits 2' $([ "$rc" = 2 ]; echo $?)
+printf '$1\tcrew\n' > "$STUB_DIR/tmux-sessions"
+TERM_PROGRAM=iTerm.app run groups --terminal tmux
+check 'groups --terminal tmux on iTerm2 prints the tmux session lines' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sq '"name": "crew"' "$T/out"; echo $?)
+rm -f "$STUB_DIR/ps-extra"
+reset_stub
+__CFBundleIdentifier=dev.herdr.app TERM_PROGRAM=iTerm.app run find nobody --terminal herdr
+check 'find --terminal herdr on an iTerm2 environment reads hc, not osascript' \
+  $([ "$rc" = 0 ] && grep -sq '^ls|' "$STUB_DIR/hc.log" && [ ! -e "$STUB_DIR/osa.log" ]; echo $?)
+
 # find --session-id: the kind id is a claude whose argv holds --resume <id>
 # or --session-id <id>. A person's own claude in the worktree has neither.
 reset_stub
@@ -1367,6 +1399,12 @@ rm -f "$STUB_DIR/lsof-extra"
 : > "$STUB_DIR/tmux.log"
 TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
 check 'resume of a session that find sees by its id (--resume <id>, no --name, no cwd) exits 8 and opens no tab' \
+  $([ "$rc" = 8 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
+printf '%%7 /dev/ttys901\n' > "$STUB_DIR/tmux-list-panes"
+echo '900001 1 ttys901 claude --name rs-1 --model opus' > "$STUB_DIR/ps-extra"
+: > "$STUB_DIR/tmux.log"
+TERM_PROGRAM=iTerm.app run resume --name rs-1 --worktree "$RWT" --terminal tmux
+check 'resume --terminal tmux from an iTerm2 environment exits 8 for a live tmux tab and opens no tab' \
   $([ "$rc" = 8 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
 rm -f "$STUB_DIR/lsof-extra" "$STUB_DIR/ps-extra"
 TMUX=/tmp/t,1,0 run resume --name Bad_Name --worktree "$RWT"

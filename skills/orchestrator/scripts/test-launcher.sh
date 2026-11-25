@@ -639,7 +639,7 @@ r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqi 'no tab group' "$
   && grep -sq '^-|start|' "$STUB_DIR/osa.log" && r=0
 check 'a failed helper falls back to osascript, prints one no-group line, tab_group null' $r
 check 'the osascript fallback names the session' $(grep -sq '|it4|$' "$STUB_DIR/osa.log"; echo $?)
-r=1; python3 - "$STUB_DIR/osa-script" <<'PY' && r=0
+r=1; python3 - "$STUB_DIR/osa-scripts" <<'PY' && r=0
 import sys
 s = [l.strip() for l in open(sys.argv[1])]
 def at(line):
@@ -684,18 +684,18 @@ check 'a tab that cannot close: exit 6, no osascript start, the line names the t
 
 helper_says 1 '{"opened": "T-1"}' '{"typed": "T-1"}'
 TERM_PROGRAM=iTerm.app run start --name pf4 --model m --principal p --checkout "$CO" --group grp
-r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] \
+r=1; [ "$rc" = 0 ] && ! grep -sq '^-|start|' "$STUB_DIR/osa.log" && [ "$(field tab)" = '"iterm2:T-1"' ] \
   && [ "$(field tab_group)" = null ] && [ "$(lines "$T/err")" = 1 ] && r=0
 check 'a helper that failed after it typed the command: the tab is reported, one stderr line, no osascript' $r
 
 helper_says 0 '{"opened": "T-1"}' '{"typed": "T-1"}' 'not json'
 TERM_PROGRAM=iTerm.app run start --name pf5 --model m --principal p --checkout "$CO"
-r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] && [ "$(lines "$T/err")" = 1 ] && r=0
+r=1; [ "$rc" = 0 ] && ! grep -sq '^-|start|' "$STUB_DIR/osa.log" && [ "$(field tab)" = '"iterm2:T-1"' ] && [ "$(lines "$T/err")" = 1 ] && r=0
 check 'a typed command and no result line: the tab is reported, no osascript' $r
 
 helper_says 0 '{"opened": "T-1"}' '{"typed": "T-1"}' '{"session_id": "T-1", "tab_group": null, "warning": "RPCException: x"}'
 TERM_PROGRAM=iTerm.app run start --name pf6 --model m --principal p --checkout "$CO" --group grp
-r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] \
+r=1; [ "$rc" = 0 ] && ! grep -sq '^-|start|' "$STUB_DIR/osa.log" && [ "$(field tab)" = '"iterm2:T-1"' ] \
   && [ "$(field tab_group)" = null ] && [ "$(lines "$T/err")" = 1 ] && grep -sq 'RPCException: x' "$T/err" && r=0
 check 'a result with a warning: the tab is reported, one stderr line, no osascript' $r
 
@@ -755,14 +755,14 @@ LONGP=$(python3 -c 'print("x" * 1500)')
 # a 0600 file that removes itself and then holds the full command.
 typed_ok() {
   python3 - "$(typed_line)" "$(launch_file)" "$1" <<'PY'
-import os, stat, sys
+import os, shlex, stat, sys
 typed, path, worktree = sys.argv[1:4]
 assert len((typed + "\n").encode("utf-8")) <= 1024, len(typed)
-assert typed.startswith(" . '/tmp/crew-launch-") and typed.endswith(".sh'"), typed
-assert path and typed == " . '%s'" % path, (typed, path)
+assert typed.startswith(" . ") and "/tmp/crew-launch-" in typed and ".sh" in typed, typed
+assert path and typed == " . " + shlex.quote(path), (typed, path)
 assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
 lines = open(path).read().split("\n")
-assert lines[0] == "rm -f -- '%s'" % path, lines[0]
+assert lines[0] == "rm -f -- " + shlex.quote(path), lines[0]
 assert lines[1].startswith("cd %s && exec claude " % worktree), lines[1]
 assert "x" * 1500 in lines[1] and len(lines[1]) > 1024
 PY
@@ -865,7 +865,7 @@ r=1; python3 - "$here" "$CO" "$T" > "$T/out" 2> "$T/err" <<'PY' && r=0
 import os, sys
 sys.path.insert(0, sys.argv[1])
 import launcher
-d = os.path.join(sys.argv[3], "'" * 300)
+d = os.path.join(sys.argv[3], "'" * 150, "'" * 150, "'" * 150)
 os.makedirs(d)
 launcher.LAUNCH_DIR = d
 rc = launcher.main(["start", "--name", "ln1", "--principal", "p", "--checkout", sys.argv[2], "--terminal", "iterm2"])

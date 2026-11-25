@@ -24,6 +24,24 @@ from pathlib import Path
 LIVE_STATES = ("active", "blocked")
 
 
+# A park (`crew-step.py park`) ends the project lead's session on purpose,
+# and a waiter session takes the run over. The end of the session that
+# parked is not a death: it is retired. A session is retired when it is the
+# `from_session` of a `run.parks` entry that a different session woke. A park
+# that failed has no `woke`, so its session stays live. While `run.park` is
+# set, the run is not live at all: no session of it builds.
+def is_retired(run: dict, session_id: str) -> bool:
+    if isinstance(run.get("park"), dict):
+        return True
+    for entry in run.get("parks") or []:
+        if not isinstance(entry, dict) or entry.get("from_session") != session_id:
+            continue
+        woke = entry.get("woke")
+        if isinstance(woke, dict) and woke.get("session_id") not in (None, session_id):
+            return True
+    return False
+
+
 def is_live(run: dict) -> bool:
     if run.get("run_state") in LIVE_STATES:
         return True
@@ -95,7 +113,7 @@ def interrupt_run(state_path: Path, session_id: str) -> bool:
         run = state.get("run") or {}
         if session_id not in run.get("session_ids", []):
             return False
-        if not is_live(run):
+        if not is_live(run) or is_retired(run, session_id):
             return False
         run["run_state"] = "interrupted"
         write_json(state_path, state)

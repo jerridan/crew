@@ -10,8 +10,8 @@ the lines, then you decide.
 
 Run it as `<project-lead-dir>/scripts/crew-step.py <subcommand> <record-dir>
 ...`. It finds `crew-record.py` and `spend.py` beside itself, and
-`crew-orch.py` in `../../orchestrator/scripts/`. Python 3 standard library
-only.
+`crew-orch.py`, `launcher.py` and `crew-usage.py` in
+`../../orchestrator/scripts/`. Python 3 standard library only.
 
 ## Output and exit codes
 
@@ -41,7 +41,7 @@ A step that writes the record prints a `record` line. It carries one line per
 `crew-record.py` call, with the call's subcommand as the detail.
 
 Every `state.json` write is a `crew-record.py` call. The script writes
-`worktrees.json` itself.
+`worktrees.json` itself. `park` writes its prompt file and its log too.
 
 ## launch-check
 
@@ -229,3 +229,88 @@ when any failed.
 | `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |
 | `worktree-remove` | Removes each worktree that `worktrees.json` names, then deletes that entry. IC worktrees go first and the deliverable checkout goes last. Each removal runs against `run.repo` and never passes `--force`. The line is `ok worktree-remove: <path>`. A refusal prints `FAIL worktree-remove: <path>: <git's message>`, keeps that entry, and goes on to the next. A path not in `worktrees.json` is never touched. A run with no file removes nothing. |
 | `restore` | With a `checkout_branch` and a clean tree, runs `switch <checkout_branch>` in `run.repo` and writes `checkout_restored: true`. With a dirty tree, writes one sentence that names why as `checkout_restored`. With `checkout_branch: null`, it does nothing. |
+
+## park
+
+```
+crew-step.py park <record-dir> --reason usage|pause|question --next "<text>"
+    [--until <epoch seconds>] [--by <name>] [--delay <seconds>]
+```
+
+Run it to end your session at a long wait. `park.md` says when. The call
+writes `run.park`, starts a detached helper, and exits 0 at once. The helper
+starts the waiter, then stops your session. End your turn after the call.
+
+| Flag | What it does |
+|---|---|
+| `--reason` | `usage`, `pause` or `question`. It sets `run.park.by`: `usage` for `usage`, `project-lead` for `question`, and the `--by` value for `pause`. |
+| `--next` | the step the resumed run takes first. It goes to `run.park.next`. |
+| `--until` | the end of the wait, in epoch seconds, such as the usage reset. Without it, `run.park.until` is `null`. |
+| `--by` | the principal's name. `pause` needs it, and the other two reasons refuse it. |
+| `--delay` | the seconds the helper waits before it stops your session, so that your turn can end. The default is 20. A test sets 0. |
+
+The launch values of your session come from the orchestrator item's
+`launch`, in `<record-root>/orchestrators/<name>/orchestrator.json`: the
+session name, the tab, the terminal, the tab group and the model. The script
+reads that file and never writes it.
+
+**The call.** These steps print a line each on stdout:
+
+| Step | What it does |
+|---|---|
+| `park` | Refuses the park with `FAIL park: <why>` and exit 1, and writes nothing. The refusals: no `state.json`; a `run.park` already set; no `run.orchestrator`; an orchestrator record or item that cannot be read, or an item with no `launch.tab` or no `launch.session_name`; a `run.repo` that is not the item's `launch.worktree`; a `git status --porcelain` in `run.checkout` (else `run.repo`) that prints a line. An untracked file counts. |
+| `record` | `crew-record.py run set park <json>`: `{reason, by, at, until, next, from_session, prompt, waiter: null}`. `from_session` is `$CLAUDE_CODE_SESSION_ID`. `prompt` is `<record-dir>/park/prompt-<n>.md`, where `<n>` counts parks from 1. |
+| `helper` | Starts the helper in a new process session, with its output in `<record-dir>/park/park.log`. The line is `ok helper: started pid <pid>, log <path>`. |
+
+**The helper.** It writes one line per step to `park/park.log`, as `<UTC
+time> ok|FAIL <step>: <detail>`, and the line `<UTC time> end` last.
+
+| Step | What it does |
+|---|---|
+| `prompt` | Writes the waiter's first prompt to `run.park.prompt`. It names the record directory, the goal slug, and the section `## The waiter` of `park.md`, by its absolute path beside this file. |
+| `settings` | `crew-usage.py settings --cwd <run.repo>`. |
+| `window` | `launcher.py window --name <name> --cwd <run.repo> --prompt-file <prompt> --model <model> --group <group> --terminal <terminal> --settings <value>`. |
+| `record` | `crew-record.py run set park.waiter <json> --if park.at=<json> --if park.from_session=<json>`. `waiter` is `{name, session_id, tab, terminal, tab_group, model, started_at}`, from the launcher's output. |
+| `orch` | `crew-orch.py --orch <name> item <item> set launch.tab <json>`, then `set launch.session_id <json>`, with the waiter's values. One line per call. |
+| `wait` | Waits `--delay` seconds. |
+| `stop` | `launcher.py stop <launch.tab> --name <name> --session-id <from_session>`. The launcher matches either flag only on that tab, so the waiter, with the same name in another tab, is never the target. |
+
+**A failure rolls the park back.** A failed `prompt`, `settings`, `window`,
+`record` or `orch` step stops the sequence. When the waiter started, the
+helper stops it with `launcher.py stop <waiter tab> --session-id <waiter
+id>`. Then it appends the park to `run.parks` with `failed: {step, at,
+error}`, and sets `run.park` to `null`. Your session is not stopped.
+`park.md` says what to arm before the call, for this case.
+
+**A wake before the waiter write.** The `record` step writes only while
+`run.park` is still this park. When `crew-record.py` exits 3, the `--if` did
+not hold: a wake came first, and `unpark` moved the park. The helper reads
+the park's entry in `run.parks`:
+
+- The waiter woke it: the helper writes no waiter, then runs `orch`, `wait`
+  and `stop` as usual. A failed `orch` call then stops neither session.
+- Another session woke it: the helper stops the waiter and stops nothing
+  else.
+
+The exit code of the call is 0 when the helper started, 1 for a refusal or a
+failed `record`, and 2 for a usage error. The helper's own result is in
+`park.log` only.
+
+## unpark
+
+```
+crew-step.py unpark <record-dir> [--by "<what woke the run>"]
+```
+
+Run it first in a resume of a parked run (`resume.md`). With no `run.park`, it
+prints `ok unpark: no park`, changes nothing and exits 0. No `state.json`
+prints `FAIL unpark` and exits 1.
+
+| Step | What it does |
+|---|---|
+| `record` | `crew-record.py run append parks <json>`, then `run set park null`. The entry is `run.park` plus `woke: {at, by, session_id}`, where `by` is the `--by` value or `null`, and `session_id` is `$CLAUDE_CODE_SESSION_ID`. Both calls carry the `--if` pair of the helper's `record` step. A rerun after a failed second call finds the entry in `run.parks` and skips the append. |
+| `stop` | Stops the waiter with `launcher.py stop <waiter.tab> --session-id <waiter.session_id>`. It is skipped when `run.park.waiter` is `null`, has no `tab`, or is this session. |
+| `orch` | With `run.orchestrator`, when this session is not the waiter: `crew-orch.py --orch <name> item <item> set launch.session_id "<this session>"`, then `set launch.tab null`. The orchestrator then finds the tab by the session name. Skipped for the waiter itself. |
+| `unpark` | `ok unpark: run.park moved to run.parks`. |
+
+The exit code is 1 when a step failed, and 2 for a usage error.

@@ -48,6 +48,7 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-fl
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run append <dotted.field> '<json>'
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run set <dotted.field> '<json>' --if <dotted.field>='<json>'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run delete <dotted.field>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run remove <dotted.field> '<json>'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
@@ -87,6 +88,12 @@ object. `append` also exits 2 when the field is not a list. `delete` also exits
 is not a list, or when it finds no equal value. Each runs under
 the lock and in the atomic write of `run set`. `crew-record.py`'s own docstring
 owns the exact rules.
+
+**`--if <dotted.field>=<json>` makes a `run set` or a `run append`
+conditional.** The call writes only when that field of `run` equals the
+value, in value and in JSON type, under the same lock. When the field does
+not match, the call writes nothing and exits 3. The flag can repeat, and
+every condition must hold. `crew-step.py park` uses it (`crew-step.md`).
 
 **Never write `escalations` with `run set`.** That command replaces the key,
 so it drops every ask already in the list. `escalation add` appends one ask,

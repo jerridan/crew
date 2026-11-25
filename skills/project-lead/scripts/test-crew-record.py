@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Seeded test of `run append`, `run delete` and `run remove` of crew-record.py.
+"""Seeded test of `run append`, `run delete`, `run remove` and the `--if` of
+`run set` and `run append` of crew-record.py.
 
 usage: python3 skills/project-lead/scripts/test-crew-record.py
 
@@ -102,6 +103,39 @@ try:
     refused("remove from an object", "run", "remove", "results", "1")
     refused("remove from a missing field", "run", "remove", "nope", "1")
     refused("remove bad JSON", "run", "remove", "session_ids", "bare words")
+
+    # run set and run append with --if: a write only when a field equals a value.
+    rec("run", "set", "park", '{"at": "t1", "from_session": "A", "waiter": null}')
+    result = rec("run", "set", "park.waiter", '{"name": "w"}', "--if", 'park.at="t1"')
+    check("set --if writes when the field matches", result.returncode == 0
+          and state()["run"]["park"]["waiter"] == {"name": "w"})
+    result = rec("run", "set", "park.waiter", "null", "--if", 'park.at="t1"', "--if", 'park.from_session="A"')
+    check("set with two matching --if writes", result.returncode == 0 and state()["run"]["park"]["waiter"] is None)
+
+    def no_match(label, *args):
+        before = raw()
+        result = rec(*args)
+        check(label + ": exit 3", result.returncode == 3)
+        check(label + ": a message", bool(result.stderr.strip()))
+        check(label + ": no write", raw() == before)
+
+    no_match("set --if with another value", "run", "set", "park.waiter", '{"name": "w"}', "--if", 'park.at="t2"')
+    no_match("set --if with one of two conditions false", "run", "set", "park.waiter", "1",
+             "--if", 'park.at="t1"', "--if", 'park.from_session="B"')
+    no_match("set --if with another JSON type", "run", "set", "park.waiter", "1", "--if", 'park.at=1')
+    no_match("set --if on a missing field", "run", "set", "park.waiter", "1", "--if", 'nope.at="t1"')
+    rec("run", "set", "gone", "null")
+    no_match("set --if through a null level", "run", "set", "x", "1", "--if", 'gone.at="t1"')
+    result = rec("run", "set", "flag", "true", "--if", "gone=null")
+    check("set --if matches a null value", result.returncode == 0 and state()["run"]["flag"] is True)
+    result = rec("run", "append", "parks", '{"at": "t1"}', "--if", 'park.at="t1"')
+    check("append --if writes when the field matches", result.returncode == 0
+          and state()["run"]["parks"] == [{"at": "t1"}])
+    no_match("append --if with another value", "run", "append", "parks", '{"at": "t1"}', "--if", 'park.at="t9"')
+    refused("--if with no =", "run", "set", "x", "1", "--if", "park.at")
+    refused("--if with bad JSON", "run", "set", "x", "1", "--if", "park.at=bare words")
+    refused("--if with no value", "run", "set", "x", "1", "--if")
+    refused("--if on run delete", "run", "delete", "flag", "--if", "gone=null")
 
     with ThreadPoolExecutor(8) as pool:
         list(pool.map(lambda n: rec("run", "append", "many", str(n)), range(16)))

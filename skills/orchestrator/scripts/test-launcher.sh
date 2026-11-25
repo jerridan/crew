@@ -17,6 +17,8 @@ T=$(mktemp -d)
 cleanup() {
   [ -e "$T/pids" ] && kill -9 $(cat "$T/pids") 2>/dev/null
   [ -e "$T/launch-files" ] && xargs rm -f < "$T/launch-files"
+  # Every launch file of this run names a worktree under $T.
+  grep -lF "$(basename "$T")" /tmp/crew-launch-*.sh 2>/dev/null | xargs rm -f
   rm -rf "$T"
 }
 trap cleanup EXIT

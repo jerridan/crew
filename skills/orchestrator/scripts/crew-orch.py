@@ -91,6 +91,9 @@ CHECK_FAIL = {"FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE", "ACTION_REQUIR
 CHECK_PASS = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 GH_TIMEOUT = 60
 USAGE_TIMEOUT = 5
+# A launcher start or resume call: the helper timeout (120 s), the default wait
+# for a claude process (60 s) and the bounded terminal steps fit in it.
+LAUNCH_TIMEOUT = 300
 
 
 class Usage(Exception):
@@ -1513,7 +1516,7 @@ def cmd_launch(rec: Record, args: list) -> None:
         argv += ["--group", opts["group"]]
     if "terminal" in opts:
         argv += ["--terminal", opts["terminal"]]
-    rc, out, err = sh(argv, timeout=180)
+    rc, out, err = sh(argv, timeout=LAUNCH_TIMEOUT)
     if rc != 0:
         raise Fail(f"launcher.py start exited {rc}: {last_line(err, 'no message')}")
     try:
@@ -1885,7 +1888,7 @@ def resume_item(rec: Record, item: dict, read_only: bool) -> tuple:
         argv += ["--group", launch["tab_group"]]
     if launch.get("terminal"):
         argv += ["--terminal", launch["terminal"]]
-    rc, out, err = sh(argv, timeout=180)
+    rc, out, err = sh(argv, timeout=LAUNCH_TIMEOUT)
     if rc != 0:
         return (f"{item_id} notice: launcher.py resume exited {rc}: {last_line(err, 'no message')}; "
                 f"add a notice or run find"), False

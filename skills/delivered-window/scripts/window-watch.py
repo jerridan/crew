@@ -52,6 +52,9 @@ WATCH_STEP = HERE / "watch-step.py"
 ORCH_PY = os.environ.get("CREW_WINDOW_ORCH") or str(SKILLS / "orchestrator" / "scripts" / "crew-orch.py")
 POLL = os.environ.get("WINDOW_WATCH_POLL") or str(HERE / "pr-watch.sh")
 LAUNCHER = os.environ.get("CREW_WINDOW_LAUNCHER") or str(SKILLS / "orchestrator" / "scripts" / "launcher.py")
+# The launcher's window call: the helper timeout (120 s), the default wait for
+# a claude process (60 s) and the bounded terminal steps fit in it.
+LAUNCH_TIMEOUT = 300
 STALE_DEFAULT = 4 * 3600
 SCRIPT = Path(os.path.abspath(__file__))
 
@@ -515,7 +518,7 @@ def launch(record, name, find_first, wj, poll):
         cmd = launcher_cmd() + ["window", "--name", name, "--cwd", cwd, "--prompt-file", str(prompt),
                                 "--model", str(w.get("model") or "opus")]
         try:
-            done = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            done = subprocess.run(cmd, capture_output=True, text=True, timeout=LAUNCH_TIMEOUT)
             out = json.loads(done.stdout.strip().splitlines()[-1]) if done.returncode == 0 and done.stdout.strip() else None
         except (OSError, subprocess.SubprocessError, ValueError, IndexError):
             done, out = None, None

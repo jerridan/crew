@@ -1781,6 +1781,8 @@ def find_handles(item: dict) -> list:
         argv += ["--worktree", launch["worktree"]]
     if launch.get("session_id"):
         argv += ["--session-id", launch["session_id"]]
+    if launch.get("terminal"):
+        argv += ["--terminal", launch["terminal"]]
     rc, out, err = sh(argv, timeout=60)
     if rc != 0:
         raise Fail(f"launcher.py find {launch['session_name']} exited {rc}: {last_line(err, 'no message')}")

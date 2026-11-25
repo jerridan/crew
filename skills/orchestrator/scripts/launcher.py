@@ -12,8 +12,9 @@ usage:
                      [--settings <file-or-json>] [--repo <owner/repo>]
                      [--group <name>] [--group-color <#rrggbb>]
                      [--terminal iterm2|tmux|herdr]
-  launcher.py groups
+  launcher.py groups [--terminal iterm2|tmux|herdr]
   launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
+                   [--terminal iterm2|tmux|herdr]
   launcher.py focus <handle>
   launcher.py stop <handle> [--name <session-name>] [--session-id <id>]
   launcher.py remove <worktree> [--delete-branch [--pr <number>]]
@@ -362,12 +363,14 @@ def parse(argv):
     w.add_argument("--group")
     w.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     g = sub.add_parser("groups", add_help=False)
-    g.usage_line = "usage: launcher.py groups"
+    g.usage_line = "usage: launcher.py groups [--terminal iterm2|tmux|herdr]"
+    g.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     f = sub.add_parser("find", add_help=False)
-    f.usage_line = "usage: launcher.py find <session-name> [--worktree <path>] [--session-id <id>]"
+    f.usage_line = "usage: launcher.py find <session-name> [--worktree <path>] [--session-id <id>] [--terminal iterm2|tmux|herdr]"
     f.add_argument("session_name")
     f.add_argument("--worktree")
     f.add_argument("--session-id")
+    f.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     h = sub.add_parser("focus", add_help=False)
     h.usage_line = "usage: launcher.py focus <handle>"
     h.add_argument("handle")
@@ -1216,7 +1219,7 @@ def find_tabs(name, worktree, terminal, session_id=None):
 
 
 def find(a):
-    terminal = detect_terminal()
+    terminal = detect_terminal(a.terminal)
     worktree = os.path.realpath(os.path.expanduser(a.worktree)) if a.worktree else None
     for handle, how in find_tabs(a.session_name, worktree, terminal, a.session_id):
         print("%s %s" % (handle, how))
@@ -1226,8 +1229,8 @@ def find(a):
 # -- groups -----------------------------------------------------------------
 
 
-def groups(_a):
-    terminal = detect_terminal()
+def groups(a):
+    terminal = detect_terminal(a.terminal)
     if terminal == "tmux":
         rc, out, _ = tmux(["list-sessions", "-F", "#{session_id}\t#{session_name}"])
         if rc != 0:

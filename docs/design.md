@@ -10620,21 +10620,19 @@ Deliberately different:
     - **Unexercised.** Only the seeded tests ran the commands, the poller and
       the hook. No orchestrator run has used them.
 
-### §15.NEXT
-
-**`find` and `groups` take `--terminal` — 2026-11-25, `launcher.py`,
-`crew-orch.py`, jerridan/crew#193.** `find` and `groups` chose the terminal
-from the caller's environment only. An orchestrator in iTerm2 that ran
-`start --terminal tmux` could not `find` the tmux implementer, because `find`
-listed the iTerm2 sessions. `crew-orch.py resume` called `find` with no
-terminal, so it read a live tmux implementer as gone, while its own `resume`
-call of the launcher passed `--terminal`.
-- **Decision.** Both commands take `--terminal iterm2|tmux|herdr`, and rule 1
-  of "Terminals" in `launcher.md` holds for them. With no flag, nothing
-  changes. `crew-orch.py` passes `--terminal <launch.terminal>` to `find` when
-  the item stores it.
-- **Why not a scan of every terminal.** A scan needs a presence probe for each
-  terminal. An absent iTerm2 makes the `osascript` listing fail with exit 6.
-  The item already stores its terminal, so the flag costs nothing. `groups`
-  takes the option for the same reason.
-- **Unexercised.** Only the seeded tests ran it.
+167. **`find` and `groups` take `--terminal` — 2026-11-25, `launcher.py`,
+    `crew-orch.py`, jerridan/crew#193.** `find` and `groups` chose the
+    terminal from the caller's environment only. An orchestrator in iTerm2
+    that ran `start --terminal tmux` could not `find` the tmux implementer,
+    because `find` listed the iTerm2 sessions. `crew-orch.py resume` called
+    `find` with no terminal, so it read a live tmux implementer as gone, while
+    its own `resume` call of the launcher passed `--terminal`.
+    - **Decision.** Both commands take `--terminal iterm2|tmux|herdr`, and
+      rule 1 of "Terminals" in `launcher.md` holds for them. With no flag,
+      nothing changes. `crew-orch.py` passes `--terminal <launch.terminal>` to
+      `find` when the item stores it.
+    - **Why not a scan of every terminal.** A scan needs a presence probe for
+      each terminal. An absent iTerm2 makes the `osascript` listing fail with
+      exit 6. The item already stores its terminal, so the flag costs nothing.
+      `groups` takes the option for the same reason.
+    - **Unexercised.** Only the seeded tests ran it.

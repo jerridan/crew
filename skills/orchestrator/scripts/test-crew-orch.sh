@@ -1881,4 +1881,106 @@ wjcheck 's["wait_owner"]["token"] == "foreign"'
 [ ! -s "$TMP/third.out" ] || fail "a superseded poller printed: $(cat "$TMP/third.out")"
 pass
 
+# ---------------------------------------------------------------- wake filter (p4)
+forch() { python3 "$ORCH_PY" --orch flt "$@"; }
+FD="$CREW_RECORD_ROOT/orchestrators/flt"
+fjcheck() {
+  python3 "$ORCH_PY" --orch flt show >"$TMP/fshow.json" || fail "show failed"
+  python3 - "$TMP/fshow.json" "$1" <<'PYF2' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYF2
+}
+rm -f "$TMP/level"
+expect_exit 0 forch init
+for i in i1 i2 s1; do expect_exit 0 forch item add $i --title "Filter $i" --repo owner/fl; done
+n=961; for i in i1 i2 s1; do expect_exit 0 forch item $i pr $n; n=$((n + 1)); done
+expect_exit 0 forch item i1 set launch '{"session_name": "i1", "worktree": "/x/i1"}'
+expect_exit 0 forch item i2 set launch '{"session_name": "i2", "worktree": "/x/i2"}'
+expect_exit 0 forch item s1 set subagent '{"name": "sub-s1", "model": "sonnet"}'
+seed_pr 961 9619619619619619619619619619619619619619
+seed_pr 962 9629629629629629629629629629629629629629 PENDING
+seed_pr 963 9639639639639639639639639639639639639639
+expect_exit 0 forch merge i2 --ready "ready 9629629: ok" --when-green
+fjcheck 's["merge_queue"] == ["i2"]'
+expect_exit 0 forch refresh
+expect_exit 0 forch wait --interval 0.05 --polls 2
+
+STEP="p4 a red check and a new comment on an implementer item wake nobody and show as board events"
+flip_pr 961 'd["statusCheckRollup"][0]["conclusion"] = "FAILURE"; d["comments"] = [{"id": "c9", "author": {"login": "rev"}, "createdAt": "2026-11-24T11:00:00Z", "body": "Nit."}]'
+expect_exit 0 forch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "an implementer item woke the orchestrator: $(cat "$TMP/out")"
+fjcheck 'any(e["item"] == "i1" and e["text"].startswith("check") for e in s["events"]) and any(e["item"] == "i1" and e["text"].startswith("comment") for e in s["events"])'
+forch board --json >"$TMP/board.json"
+python3 - "$TMP/board.json" <<'PY' || fail "no check event on the board JSON"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert any(e["item"] == "i1" and "check" in e["text"] for e in d["events"]), d.get("events")
+PY
+pass
+
+STEP="p4 the same red check on a subagent item wakes"
+expect_exit 0 forch refresh
+flip_pr 963 'd["statusCheckRollup"][0]["conclusion"] = "FAILURE"'
+expect_exit 0 forch wait --interval 0.05 --polls 3
+grep -q '^wake check s1: ' "$TMP/out" || fail "no wake for a subagent item: $(cat "$TMP/out")"
+pass
+
+STEP="p4 a red check on an item in merge_queue still wakes"
+flip_pr 962 'd["statusCheckRollup"][0]["conclusion"] = "FAILURE"; d["statusCheckRollup"][0]["status"] = "COMPLETED"'
+expect_exit 0 forch wait --interval 0.05 --polls 3
+grep -q '^wake check i2: ' "$TMP/out" || fail "no wake for an item in merge_queue: $(cat "$TMP/out")"
+pass
+
+# ---------------------------------------------------------------- resume of a shipped item (p4)
+sorch() { python3 "$ORCH_PY" --orch shp "$@"; }
+SD="$CREW_RECORD_ROOT/orchestrators/shp"
+expect_exit 0 sorch init
+for i in h1 h2 h3; do
+  expect_exit 0 sorch item add $i --title "Shipped $i" --repo owner/sh
+  expect_exit 0 sorch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%1\", \"session_id\": \"sid-$i\"}"
+done
+expect_exit 0 sorch stage h1 shipped
+expect_exit 0 sorch stage h2 closed
+expect_exit 0 sorch stage h3 shipped
+echo 'tmux:%8 name' >"$TMP/find-h1.txt"
+echo 'tmux:%1 id' >"$TMP/find-h2.txt"
+rm -f "$TMP/find-h3.txt"
+cp "$SD/orchestrator.json" "$TMP/shp-before.json"
+
+STEP="p4 resume --read-only finds a shipped item, writes nothing, and names the close action"
+expect_exit 0 sorch resume --read-only
+grep -q '^h1 close: .*tmux:%8.*close-item h1' "$TMP/out" || fail "bad h1 line: $(cat "$TMP/out")"
+grep -q '^h2 close: .*close-item h2' "$TMP/out" || fail "bad h2 line: $(cat "$TMP/out")"
+grep -q '^h3 close: .*gone.*close-item h3 --continue' "$TMP/out" || fail "bad h3 line: $(cat "$TMP/out")"
+cmp -s "$TMP/shp-before.json" "$SD/orchestrator.json" || fail "read-only changed the record"
+pass
+
+STEP="p4 resume writes the changed launch.tab of a shipped item"
+expect_exit 0 sorch resume
+python3 "$ORCH_PY" --orch shp show h1 | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["launch"]["tab"] == "tmux:%8" else 1)' || fail "launch.tab not written"
+python3 "$ORCH_PY" --orch shp show h3 | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["launch"]["tab"] == "tmux:%1" else 1)' || fail "a gone item changed its tab"
+pass
+
+# ---------------------------------------------------------------- queue wake (p4 fix round 1)
+expect_exit 0 forch item add q1 --title "Filter q1" --repo owner/fl
+expect_exit 0 forch item q1 pr 964
+seed_pr 964 9649649649649649649649649649649649649649
+expect_exit 0 forch refresh
+expect_exit 0 forch wait --interval 0.05 --polls 2
+
+STEP="p4 a PR that enters the merge queue wakes nobody and shows as a board event"
+echo '{"data": {"repository": {"pullRequest": {"isInMergeQueue": true, "mergeQueueEntry": {"position": 2}}}}}' >"$TMP/gh/queue-964.json"
+expect_exit 0 forch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "a queue entry woke the orchestrator: $(cat "$TMP/out")"
+fjcheck 'any(e["item"] == "q1" and e["text"].startswith("queue") and "2" in e["text"] for e in s["events"])'
+pass
+
+STEP="p4 a PR that leaves the merge queue while it is still open wakes"
+echo '{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}' >"$TMP/gh/queue-964.json"
+expect_exit 0 forch wait --interval 0.05 --polls 3
+grep -q '^wake queue q1: left the queue' "$TMP/out" || fail "no dequeue wake: $(cat "$TMP/out")"
+pass
+
 echo "all checks passed"

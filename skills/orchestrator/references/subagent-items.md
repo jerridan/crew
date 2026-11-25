@@ -44,8 +44,9 @@ item or an implementer item, whatever the test gives.
 
 ## The record
 
-Before the dispatch, write `item <id> set subagent` with `name`, `model`,
-`worktree` and `branch`. Write a `plan change` whose reason names the test or
+Before the dispatch, write `item <id> set subagent` with `name` and `model`,
+and with `worktree` and `branch` as `null`. The dispatch gives the worktree
+and the branch, so write them as "The dispatch" says, when it returns. Write a `plan change` whose reason names the test or
 the principal's word. Write the brief, and each later message to the subagent,
 with `told`.
 
@@ -56,11 +57,13 @@ with `told`.
 - The name: `sub-<item id>`. The agent type is `general-purpose`. The dispatch
   mode follows the table of `skills/project-lead/SKILL.md`'s "Every dispatch
   is named".
-- The worktree: for work that changes a repo, the brief names the principal's
-  checkout of that repo (step 1 of `SKILL.md`'s "Launch an implementer"). The
-  subagent adds its worktree there, at the path and on the branch that
-  `launcher.md`'s "start" gives for the name `sub-<item id>`. Work that
-  changes no repo gets no worktree.
+- The worktree: for work that changes a repo, dispatch the subagent with the
+  Agent tool's `isolation: "worktree"`. The dispatch makes the worktree. The
+  subagent runs no `git worktree add`: the guard of a worktree-isolated
+  session refuses it. When the dispatch returns the worktree path and the
+  branch, write them with `item <id> set subagent.worktree` and `item <id>
+  set subagent.branch`. Work that changes no repo gets no isolation and no
+  worktree.
 - The brief: the goal, the outcome, and context marked as context, under the
   manager rule (`SKILL.md`'s "The manager rule"). It names the ticket for the
   `Closes #<n>` line, and gives these rules: open the PR ready, not as a
@@ -152,5 +155,7 @@ On a `larger` line, and on a diff or a finding that needs a judgment:
 The close of a subagent item runs where `resume-and-close.md`'s "The close of
 an item" runs. The item has no session and no tab, so skip that procedure's
 steps 1 and 2. Stop its subagent with `TaskStop` when it still runs. Run its
-step 3 on `subagent.worktree` when it is set, with the same flags. Run its
-step 4 as it is.
+step 3 on `subagent.worktree` when it is set, with the flags of that step,
+so the branch of a merged PR is deleted. When `subagent.worktree` is `null`
+and `subagent.branch` is set, put a notice with the item and the branch in
+the inbox, and delete nothing. Run its step 4 as it is.

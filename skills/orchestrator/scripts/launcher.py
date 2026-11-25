@@ -37,19 +37,34 @@ import re
 import shlex
 import shutil
 import signal
+import math
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
 OK, USAGE, NO_CHECKOUT, NO_TERMINAL, GIT, TERMINAL_STEP, BAD_HANDLE = 0, 2, 3, 4, 5, 6, 7
 OPEN_TAB, REFUSED = 8, 9
+NO_CLAUDE = 10
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HELPER = os.path.join(HERE, "iterm2-tabs.py")
 HELPER_TIMEOUT = 120
 # The helper stops itself this many seconds before the launcher kills it.
 HELPER_MARGIN = 20
+# The launch file of an iTerm2 launch lives in this fixed short directory, so
+# the typed line that sources it stays short.
+LAUNCH_DIR = "/tmp"
+# macOS keeps at most this many bytes of one line in line mode.
+TYPED_MAX = 1024
+# The wait for a claude process on the tab, in seconds: the default, the
+# variable that sets another value, and the pause between two reads.
+START_WAIT_DEFAULT = 60
+START_WAIT_VAR = "CREW_LAUNCHER_START_WAIT"
+START_POLL = 0.5
+# The close of a tab that holds no claude has this many seconds.
+TAB_CLOSE_TIMEOUT = 10
 # stop waits this many seconds for the claude of the tab to end after /exit.
 STOP_WAIT = 15
 # After the close, stop waits this many seconds for each claude that was still
@@ -889,8 +904,17 @@ def helper_cmd(verb):
     return ["uv", "run", "-q", "--with", "iterm2", "python", HELPER, verb, "--deadline", str(deadline)]
 
 
-def iterm_start(name, group, color, command, worktree):
-    """Open the tab through the helper; fall back to osascript with no group."""
+def iterm_start(name, group, color, command, worktree, warnings=None):
+    """Open the tab through the helper; fall back to osascript with no group.
+
+    A warning goes to the warnings list when there is one, and to stderr when
+    there is none."""
+    def warn(text):
+        if warnings is None:
+            print(text, file=sys.stderr)
+        else:
+            warnings.append(text)
+
     sid = own_iterm_session()
     cmd = helper_cmd("start") + ["--name", name, "--command", command]
     if sid:
@@ -905,7 +929,7 @@ def iterm_start(name, group, color, command, worktree):
     res = said.get("session_id")
     if rc == 0 and res is not None:
         if res.get("warning"):
-            print("launcher: made no tab group: %s" % res["warning"], file=sys.stderr)
+            warn("launcher: made no tab group: %s" % res["warning"])
         return "iterm2:" + res["session_id"], res.get("tab_group")
     if rc == 0:
         why = "the helper printed no result line"
@@ -913,10 +937,7 @@ def iterm_start(name, group, color, command, worktree):
     if typed:
         # The command runs in that tab. A fallback tab would start a second
         # claude in the same worktree.
-        print(
-            "launcher: made no tab group: the iTerm2 helper failed after it typed the command (%s)" % why,
-            file=sys.stderr,
-        )
+        warn("launcher: made no tab group: the iTerm2 helper failed after it typed the command (%s)" % why)
         return "iterm2:" + typed, None
     opened = said.get("opened")
     if opened and said.get("closed") != opened:
@@ -937,15 +958,125 @@ def iterm_start(name, group, color, command, worktree):
             "launcher: iTerm2 opened no tab (helper: %s; osascript: %s); the worktree stays at %s"
             % (why, one_line(err) or "exit %d" % rc, worktree),
         )
-    print(
-        "launcher: made no tab group: the iTerm2 Python API failed (%s), so osascript opened the tab" % why,
-        file=sys.stderr,
-    )
+    warn("launcher: made no tab group: the iTerm2 Python API failed (%s), so osascript opened the tab" % why)
     return "iterm2:" + uid, None
+
+
+def start_wait():
+    """The wait for a claude process: 60 seconds when the variable is absent,
+    else its value, a positive integer or decimal. Any other value is a usage
+    error."""
+    if START_WAIT_VAR not in os.environ:
+        return START_WAIT_DEFAULT
+    text = os.environ[START_WAIT_VAR]
+    if re.fullmatch(r"[0-9]+(\.[0-9]+)?", text):
+        value = float(text)
+        if math.isfinite(value) and value > 0:
+            return value
+    raise Fail(
+        USAGE,
+        "launcher: %s is %r; give a positive number of seconds, such as 60 or 2.5" % (START_WAIT_VAR, text),
+    )
+
+
+def write_launch_file(command):
+    """Write the full command to a new 0600 file. The file removes itself first,
+    then runs the command. A failure closes and removes the file."""
+    try:
+        fd, path = tempfile.mkstemp(prefix="crew-launch-", suffix=".sh", dir=LAUNCH_DIR)
+    except OSError as e:
+        raise Fail(TERMINAL_STEP, "launcher: cannot make the launch file in %s: %s" % (LAUNCH_DIR, e.strerror or e))
+    try:
+        os.fchmod(fd, 0o600)
+        data = ("rm -f -- %s\n%s\n" % (shlex.quote(path), command)).encode("utf-8")
+        while data:
+            data = data[os.write(fd, data):]
+    except OSError as e:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise Fail(TERMINAL_STEP, "launcher: cannot write the launch file %s: %s" % (path, e.strerror or e))
+    os.close(fd)
+    return path
+
+
+def close_new_tab(handle):
+    """Close the tab by its handle. Return an empty text, or why it stayed."""
+    rc, out, err = run(
+        ["osascript", "-", "stop", handle.split(":", 1)[1]], stdin=OSA_STOP, timeout=TAB_CLOSE_TIMEOUT
+    )
+    if rc != 0 or one_line(out) not in ("ok", "gone"):
+        return "the tab did not close (%s)" % (one_line(err) or "exit %d" % rc)
+    return ""
+
+
+def wait_for_claude(handle, wait, where):
+    """Wait until a claude process runs on the tty of the tab. Fail with
+    NO_CLAUDE at the end of the wait. Every read has a timeout."""
+    deadline = time.monotonic() + wait
+    rem = lambda: max(1, deadline - time.monotonic())
+    tty = dict(terminal_ttys("iterm2", timeout=rem())).get(handle)
+    if tty is None:
+        raise Fail(TERMINAL_STEP, "launcher: osascript lists no tty for the tab %s; %s" % (handle, where))
+    while True:
+        for p in processes(timeout=rem()).values():
+            if p["tty"] == tty and is_claude(p["argv"]):
+                return
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
+        time.sleep(min(START_POLL, left))
+    raise Fail(
+        NO_CLAUDE,
+        "launcher: no claude process started on the tab %s (tty %s) within %g seconds; %s"
+        % (handle, tty, wait, where),
+    )
+
+
+def iterm_launch(name, group, color, command, worktree, wait, where):
+    """Type a short line that sources the launch file, then wait for claude.
+
+    This function owns the file and the tab. Every failure after the file
+    exists removes the file, and every failure after the tab opened closes it.
+    A good launch leaves the file: the command removes it before claude runs."""
+    path = write_launch_file(command)
+    handle = None
+    warnings = []
+    try:
+        typed = " . %s" % shlex.quote(path)
+        if len((typed + "\n").encode("utf-8")) > TYPED_MAX:
+            raise Fail(
+                TERMINAL_STEP,
+                "launcher: the typed line for %s is longer than %d bytes; %s" % (path, TYPED_MAX, where),
+            )
+        handle, group = iterm_start(name, group, color, typed, worktree, warnings)
+        wait_for_claude(handle, wait, where)
+    except BaseException as e:
+        notes = list(warnings)
+        if handle is not None:
+            why = close_new_tab(handle)
+            notes.append("the tab %s is closed" % handle if not why else why)
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        if isinstance(e, Fail) and notes:
+            e.line = "%s (%s)" % (e.line, "; ".join(one_line(n) for n in notes))
+            e.args = (e.line,)
+        raise
+    for w in warnings:
+        print(w, file=sys.stderr)
+    return handle, group
 
 
 def start(a):
     terminal = detect_terminal(a.terminal)
+    wait = start_wait() if terminal == "iterm2" else None
     target = herdr_target(a) if terminal == "herdr" else None
     checkout = a.checkout if a.checkout else checkout_for(a.repo)
     checkout = os.path.abspath(os.path.expanduser(checkout))
@@ -956,13 +1087,14 @@ def start(a):
         repo = repo_from_url(out) if rc == 0 else None
     session_id = str(uuid.uuid4())
     command = launch_command(worktree, a.name, session_id, a.model, a.settings_json, a.principal)
-    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target, wait)
     return OK
 
 
 def window(a):
     """Open one interactive tab in an existing directory: no worktree, no branch."""
     terminal = detect_terminal(a.terminal)
+    wait = start_wait() if terminal == "iterm2" else None
     target = herdr_target(a) if terminal == "herdr" else None
     session_id = str(uuid.uuid4())
     command = window_command(a.cwd, a.name, session_id, a.model, a.settings_json, a.prompt_file)
@@ -971,7 +1103,7 @@ def window(a):
     elif terminal == "herdr":
         tab, group = herdr_start(a, command, a.cwd, target)
     else:
-        tab, group = iterm_start(a.name, a.group, None, command, a.cwd)
+        tab, group = iterm_launch(a.name, a.group, None, command, a.cwd, wait, "the cwd is %s" % a.cwd)
     print(
         json.dumps(
             {
@@ -988,14 +1120,16 @@ def window(a):
     return OK
 
 
-def open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target=None):
+def open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target=None, wait=None):
     """Open the one tab or window, and print the start output line."""
     if terminal == "tmux":
         tab, group = tmux_start(a.name, a.group, command, worktree)
     elif terminal == "herdr":
         tab, group = herdr_start(a, command, worktree, target)
     else:
-        tab, group = iterm_start(a.name, a.group, a.group_color, command, worktree)
+        tab, group = iterm_launch(
+            a.name, a.group, a.group_color, command, worktree, wait, "the worktree stays at %s" % worktree
+        )
     print(
         json.dumps(
             {
@@ -1052,6 +1186,7 @@ def default_base(worktree):
 
 def resume(a):
     terminal = detect_terminal(a.terminal)
+    wait = start_wait() if terminal == "iterm2" else None
     target = herdr_target(a) if terminal == "herdr" else None
     path = os.path.abspath(os.path.expanduser(a.worktree))
     if not os.path.isdir(path):
@@ -1075,20 +1210,20 @@ def resume(a):
         rc, out, _ = run(["git", "-C", worktree, "config", "--get", "remote.origin.url"])
         repo = repo_from_url(out) if rc == 0 else None
     command = resume_command(worktree, session_id, a.name, a.model, a.settings_json)
-    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target, wait)
     return OK
 
 
 # -- processes ----------------------------------------------------------------
 
 
-def processes():
+def processes(timeout=None):
     """Each process, by pid: {"pid", "ppid", "tty" (None for no tty), "argv"}.
 
     ps prints the argv as one text, so a token holds no space. That is enough
     for --name: a session name holds no space.
     """
-    rc, out, err = run(["ps", "-axww", "-o", "pid=,ppid=,tty=,command="])
+    rc, out, err = run(["ps", "-axww", "-o", "pid=,ppid=,tty=,command="], timeout=timeout)
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: ps failed: %s" % (one_line(err) or "exit %d" % rc))
     procs = {}
@@ -1179,7 +1314,7 @@ def inside(path, root):
 # -- find -----------------------------------------------------------------------
 
 
-def terminal_ttys(terminal):
+def terminal_ttys(terminal, timeout=None):
     """[(handle, tty)] of every open tab or pane."""
     if terminal == "tmux":
         rc, out, _ = tmux(["list-panes", "-a", "-F", "#{pane_id} #{pane_tty}"])
@@ -1193,7 +1328,7 @@ def terminal_ttys(terminal):
         return rows
     if terminal == "herdr":
         return herdr_ttys()
-    rc, out, err = run(["osascript", "-", "ttys"], stdin=OSA_TTYS)
+    rc, out, err = run(["osascript", "-", "ttys"], stdin=OSA_TTYS, timeout=timeout)
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: osascript could not list the iTerm2 sessions: %s" % (one_line(err) or "exit %d" % rc))
     rows = []

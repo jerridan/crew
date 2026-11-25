@@ -9,8 +9,8 @@ orchestrator-record.md defines every file, field and command.
 Python 3 standard library only. Exit 0 on success, 1 when a command cannot
 do its work, and 2 on a usage error. An error prints one line to stderr and
 writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as
-the report of the build says; each such exit prints one line `<command>
-<check>: <detail>`.
+skills/orchestrator/references/orchestrator-record.md says; each such exit
+prints one line `<command> <check>: <detail>`.
 
 Commands:
   init
@@ -34,15 +34,15 @@ Commands:
   board [--urls | --json]
   show [<item>]
   close
-  merge <item> [--ready "<line>"] [--when-green] [--findings-answered]
-  finalize <item>
+  merge <item> [--ready "<line>"] [--when-green] [--findings-answered] [--from <name>]
+  finalize <item> [--from <name>]
   handoff clear <item>
   send <item> (--text <t> | --file <p>) [--from <name>]
   launch <item> [--model <m>] [--group <g>] [--terminal <t>] [--principal <name>] [--goal-file <p>] [--wait-seconds <n>]
-  close-item <item> [--continue] [--stop-processes]
+  close-item <item> [--continue] [--stop-processes] [--from <name>]
   digest <item> [--diff-file <p>]
   resume [--read-only]
-  wait [--interval <seconds>] [--polls <n>]
+  wait [--interval <seconds>] [--polls <n>] [--from <name>]
 """
 
 from __future__ import annotations
@@ -1034,27 +1034,30 @@ def is_delivered(rec: Record, item_id: str) -> bool:
     return False
 
 
-def deliver(rec: Record, item_id: str, text: str, sender: str, pending: bool = False) -> dict:
+def deliver(rec: Record, item_id: str, text: str, sender, pending: bool = False) -> dict:
     """Record a message to an item and deliver it when a script can.
 
     A subagent item gets no word (`none`). A delivered item gets `window-watch.py say`
     (`said`). A live item gets nothing sent: the action `send-to` names its session and
     the recorded copy, and with `pending` the record keeps the handoff until
-    `handoff clear`. No script sends a cross-session message.
+    `handoff clear`. No script sends a cross-session message. With `sender` `None` no word
+    goes out by `say`: the record keeps a handoff, so the orchestrator sends it under its own name.
     """
-    delivered = is_delivered(rec, item_id)
+    delivered = is_delivered(rec, item_id) and sender is not None
 
     def change(state):
         item = get_item(state, item_id)
         if item.get("subagent"):
             return {"kind": "none", "item": item_id}
         name = (item.get("launch") or {}).get("session_name")
-        if not delivered and not name:
+        if not is_delivered(rec, item_id) and not name:
             return {"kind": "none", "item": item_id}
         rel = append_told(rec, state, item_id, text)
         if delivered:
             return {"kind": "said", "item": item_id, "path": rel}
-        if pending:
+        if sender is None:
+            name = name or item_id
+        if pending or sender is None:
             state["handoffs"].append({"item": item_id, "name": name, "path": rel, "at": now_iso()})
         return {"kind": "send-to", "item": item_id, "name": name, "path": rel}
 
@@ -1075,7 +1078,11 @@ def show_action(rec: Record, action: dict) -> None:
 
 
 def sender_name(rec: Record, opts: dict) -> str:
-    return opts.get("from") or current_session_name() or rec.name
+    """The name a word carries as its reply address: `--from`, or the session name. Never the record name."""
+    name = opts.get("from") or current_session_name()
+    if not name:
+        raise Usage("usage: no session name was found; pass --from <your session name>")
+    return name
 
 
 # ---------------------------------------------------------------- merge
@@ -1128,6 +1135,11 @@ def section_text(text: str, heading: str):
     return "\n".join(body).strip() or None
 
 
+def machine_file() -> Path:
+    """The path of the machine file: $CREW_CONFIG, or ~/.claude/crew/config.md."""
+    return Path(os.environ.get("CREW_CONFIG") or os.path.expanduser("~/.claude/crew/config.md"))
+
+
 def merge_section(repo: str, default_branch):
     """The `Merge` section text: the repo file on the default branch, then the machine file."""
     if default_branch:
@@ -1141,9 +1153,8 @@ def merge_section(repo: str, default_branch):
                     return found
             except (ValueError, KeyError, TypeError):
                 pass
-    config = os.environ.get("CREW_CONFIG") or os.path.expanduser("~/.claude/crew/config.md")
     try:
-        return section_text(Path(config).read_text(encoding="utf-8"), "Merge")
+        return section_text(machine_file().read_text(encoding="utf-8"), "Merge")
     except OSError:
         return None
 
@@ -1171,8 +1182,9 @@ def unfinished_before(state: dict, item: dict) -> list:
 
 
 def cmd_merge(rec: Record, args: list) -> None:
-    form = 'merge <item> [--ready "<line>"] [--when-green] [--findings-answered]'
-    pos, opts = take_options(args, {"ready": True, "when-green": False, "findings-answered": False})
+    form = 'merge <item> [--ready "<line>"] [--when-green] [--findings-answered] [--from <name>]'
+    pos, opts = take_options(args, {"ready": True, "when-green": False, "findings-answered": False,
+                                    "from": True})
     want(pos, 1, 1, form)
     item_id = pos[0]
     if "ready" in opts:
@@ -1203,6 +1215,8 @@ def cmd_merge(rec: Record, args: list) -> None:
             raise Code(11, f"merge pending: {why}")
 
         def queue(st):
+            if opts.get("findings-answered"):
+                st["items"][item_id]["merge_findings_answered"] = True
             if item_id not in st["merge_queue"]:
                 st["merge_queue"].append(item_id)
                 add_event(st, item_id, f"queued until green ({why})")
@@ -1210,8 +1224,9 @@ def cmd_merge(rec: Record, args: list) -> None:
         rec.mutate(queue)
         print(f"queued: {item_id} ({why})")
 
+    sender = opts.get("from") or current_session_name()
     if value == "merged":
-        finalize(rec, item_id)
+        finalize(rec, item_id, sender)
         return
     if value in UNRECOVERABLE:
         raise Code(3, f"merge record: merge value is '{value}'")
@@ -1228,7 +1243,8 @@ def cmd_merge(rec: Record, args: list) -> None:
         return pending(value)
     if ready is None:
         return pending("no ready line for the head yet")
-    if value.startswith("waits on"):
+    if value.startswith("waits on") or value == "needs review":
+        # The group order holds before the approval and the Merge section.
         mine = pr_files(repo, number)
         late = []
         for other in unfinished_before(state, item):
@@ -1236,7 +1252,8 @@ def cmd_merge(rec: Record, args: list) -> None:
                 late.append(other["id"])
         if late:
             raise Code(8, f"merge order: {', '.join(late)} merges first and shares a file")
-        raise Code(3, f"merge record: merge value is '{value}'")
+        if value.startswith("waits on"):
+            raise Code(3, f"merge record: merge value is '{value}'")
     owner, name = repo.split("/", 1)
     data = gh_data(["api", "graphql", "-f", f"query={THREADS_QUERY}", "-f", f"owner={owner}",
                     "-f", f"repo={name}", "-F", f"n={number}"], f"review threads {number}")
@@ -1270,7 +1287,7 @@ def cmd_merge(rec: Record, args: list) -> None:
     if err:
         raise Code(10, f"merge gh: pr merge {number}: {err}")
     print(f"merge: {item_id} {method} {head[:12]}")
-    finalize(rec, item_id)
+    finalize(rec, item_id, sender)
 
 
 # ---------------------------------------------------------------- after the merge
@@ -1281,11 +1298,12 @@ REBASE_WORD = ("PR #{n} of item {merged} merged, and it shares a file with your 
                "Rebase your branch on the base branch, resolve each conflict, run the tests and push.")
 
 
-def finalize(rec: Record, item_id: str, sender=None) -> list:
+def finalize(rec: Record, item_id: str, sender) -> list:
     """Settle a PR after `gh pr merge` or at an event. Return the live-item actions.
 
     A fresh `gh pr view` read decides, never a stored value. `MERGED` releases the slot (once),
     sends the merge word, and sends the rebase word to the next item that shares a file.
+    `sender` is the reply address of the words. With `None` the words become handoffs.
     `OPEN` after a merge call is a queue at GitHub: nothing goes out, and the item stays in
     `merge_queue`. `CLOSED` releases the slot (once) and sends no word. A failed read changes
     nothing and exits 10.
@@ -1307,7 +1325,6 @@ def finalize(rec: Record, item_id: str, sender=None) -> list:
         pr_state = json.loads(out).get("state")
     except (ValueError, AttributeError):
         raise Code(10, f"merge gh: state of PR {number}: bad output")
-    sender = sender or current_session_name() or rec.name
     actions = []
 
     if pr_state == "OPEN":
@@ -1325,6 +1342,7 @@ def finalize(rec: Record, item_id: str, sender=None) -> list:
         it = st["items"][item_id]
         if item_id in st["merge_queue"]:
             st["merge_queue"].remove(item_id)
+        it.pop("merge_findings_answered", None)
         if it.get("subagent") or it.get("slot_released"):
             return False
         busy = st["pace"]["slots"]["busy"]
@@ -1349,10 +1367,18 @@ def finalize(rec: Record, item_id: str, sender=None) -> list:
         nxt = next_sharing(rec.read(), item)
         if nxt:
             word = deliver(rec, nxt["id"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True)
-            show_action(rec, word)
-            actions.append(word)
-            rec.mutate(lambda st: add_event(st, nxt["id"], f"rebase word sent after {item_id} merged"))
-            print(f"rebase-word: {nxt['id']}")
+            if word["kind"] == "none":
+                sub = nxt.get("subagent")
+                how = (f"SendMessage to its subagent {sub.get('name')}" if sub
+                       else "it has no session, so send it once it has one")
+                rec.mutate(lambda st: add_event(
+                    st, nxt["id"], f"rebase word needs the orchestrator after {item_id} merged"))
+                print(f"rebase-word-needed: {nxt['id']} (the rebase word needs the orchestrator: {how})")
+            else:
+                show_action(rec, word)
+                actions.append(word)
+                rec.mutate(lambda st: add_event(st, nxt["id"], f"rebase word sent after {item_id} merged"))
+                print(f"rebase-word: {nxt['id']}")
 
         def sent(st):
             st["items"][item_id]["words_sent"] = True
@@ -1383,9 +1409,9 @@ def next_sharing(state: dict, item: dict):
 
 
 def cmd_finalize(rec: Record, args: list) -> None:
-    pos, _ = take_options(args, {})
-    want(pos, 1, 1, "finalize <item>")
-    finalize(rec, pos[0])
+    pos, opts = take_options(args, {"from": True})
+    want(pos, 1, 1, "finalize <item> [--from <name>]")
+    finalize(rec, pos[0], opts.get("from") or current_session_name())
 
 
 def cmd_handoff(rec: Record, args: list) -> None:
@@ -1431,18 +1457,14 @@ def cmd_send(rec: Record, args: list) -> None:
 
 def checkout_path(repo: str) -> str:
     """The path of the `## Checkouts` line for `repo` in the machine file."""
-    config = os.environ.get("CREW_CONFIG") or os.path.expanduser("~/.claude/crew/config.md")
+    config = machine_file()
     try:
-        text = Path(config).read_text(encoding="utf-8")
+        text = section_text(config.read_text(encoding="utf-8"), "Checkouts") or ""
     except OSError:
         text = ""
-    inside = False
     for raw in text.splitlines():
         line = raw.strip()
-        if re.match(r"##(?!#)", line):
-            inside = line == "## Checkouts"
-            continue
-        if not inside or line.startswith("#"):
+        if not line or line.startswith("#"):
             continue
         if line.startswith("- "):
             line = line[2:].strip()
@@ -1548,15 +1570,15 @@ def add_notice(rec: Record, item_id: str, text: str) -> None:
 
 
 def cmd_close_item(rec: Record, args: list) -> None:
-    form = "close-item <item> [--continue] [--stop-processes]"
-    pos, opts = take_options(args, {"continue": False, "stop-processes": False})
+    form = "close-item <item> [--continue] [--stop-processes] [--from <name>]"
+    pos, opts = take_options(args, {"continue": False, "stop-processes": False, "from": True})
     want(pos, 1, 1, form)
     item_id = pos[0]
     item = get_item(rec.read(), item_id)
     if not opts.get("continue"):
         if opts.get("stop-processes"):
             raise Usage(f"usage: {form}; --stop-processes goes with --continue")
-        sender = sender_name(rec, {})
+        sender = sender_name(rec, opts)
         text = PROCESS_WORD.format(orch=rec.name, item=item_id, me=sender)
         action = deliver(rec, item_id, text, sender)
         if action["kind"] == "none":
@@ -1890,7 +1912,10 @@ def cmd_resume(rec: Record, args: list) -> None:
         rec.mutate(lambda st: st.__setitem__("orchestrator_session_id", session))
     live = 0
     for item in sorted(state["items"].values(), key=lambda i: i["n"]):
-        line, counts = resume_item(rec, rec.read()["items"][item["id"]], read_only)
+        try:
+            line, counts = resume_item(rec, rec.read()["items"][item["id"]], read_only)
+        except Fail as err:
+            line, counts = f"{item['id']} notice: {err}; add a notice or run find", False
         print(line)
         live += 1 if counts else 0
     if not read_only:
@@ -1939,14 +1964,18 @@ def release_owner(rec: Record, token: str) -> None:
         pass
 
 
-def stop_old_poller(old) -> None:
-    """Stop an older `wait`, only when the process still runs a `crew-orch.py ... wait` command."""
+def stop_old_poller(old, name: str) -> None:
+    """Stop an older `wait`, only when the process still runs a `crew-orch.py ... wait` of this record.
+
+    The command line must hold `--orch <name>` (or `--orch=<name>`) for this record.
+    """
     pid = (old or {}).get("pid")
     if not isinstance(pid, int) or pid <= 1 or pid == os.getpid():
         return
     rc, out, _ = sh(["ps", "-o", "command=", "-p", str(pid)], timeout=10)
     words = out.split()
-    if rc != 0 or not any(w.endswith("crew-orch.py") for w in words) or "wait" not in words:
+    mine = f"--orch={name}" in words or any(a == "--orch" and b == name for a, b in zip(words, words[1:]))
+    if rc != 0 or not any(w.endswith("crew-orch.py") for w in words) or "wait" not in words or not mine:
         return
     try:
         os.kill(pid, signal.SIGTERM)
@@ -2009,7 +2038,7 @@ def quiet(call, *args):
         return call(*args)
 
 
-def poll_prs(rec: Record, token: str) -> list:
+def poll_prs(rec: Record, token: str, sender=None) -> list:
     wakes = []
     state = rec.read()
     check_owner(state, token)
@@ -2089,16 +2118,16 @@ def poll_prs(rec: Record, token: str) -> list:
         if found["merged"] or found["closed"]:
             check_owner(rec.read(), token)
             try:
-                quiet(finalize, rec, item_id)
+                quiet(finalize, rec, item_id, sender)
             except (Code, Fail):
                 pass
             if found["closed"]:
                 wakes.append(f"wake closed {item_id}: PR #{number} closed with no merge; its slot is released")
-    wakes += run_queued_merges(rec, token)
+    wakes += run_queued_merges(rec, token, sender)
     return wakes
 
 
-def run_queued_merges(rec: Record, token: str) -> list:
+def run_queued_merges(rec: Record, token: str, sender=None) -> list:
     wakes = []
     state = rec.read()
     for item_id in list(state["merge_queue"]):
@@ -2109,7 +2138,10 @@ def run_queued_merges(rec: Record, token: str) -> list:
             continue
         check_owner(rec.read(), token)
         try:
-            quiet(cmd_merge, rec, [item_id, "--when-green"])
+            argv = [item_id, "--when-green"] + (["--from", sender] if sender else [])
+            if item.get("merge_findings_answered"):
+                argv.append("--findings-answered")
+            quiet(cmd_merge, rec, argv)
         except Code as err:
             if err.code == 11 or "not confirmed" in err.line:
                 continue
@@ -2123,6 +2155,7 @@ def run_queued_merges(rec: Record, token: str) -> list:
             check_owner(st, token)
             if item_id in st["merge_queue"]:
                 st["merge_queue"].remove(item_id)
+            st["items"][item_id].pop("merge_findings_answered", None)
             add_event(st, item_id, f"queued merge failed: exit {failure[0]}")
 
         rec.mutate(drop)
@@ -2151,19 +2184,19 @@ def poll_handoffs(rec: Record) -> list:
             for h in rec.read()["handoffs"]]
 
 
-def poll_once(rec: Record, token: str) -> list:
+def poll_once(rec: Record, token: str, sender=None) -> list:
     state = rec.read()
     check_owner(state, token)
     wakes = poll_usage(rec, token, state)
-    wakes += poll_prs(rec, token)
+    wakes += poll_prs(rec, token, sender)
     wakes += poll_inbox(rec, token)
     wakes += poll_handoffs(rec)
     return wakes
 
 
 def cmd_wait(rec: Record, args: list) -> None:
-    form = "wait [--interval <seconds>] [--polls <n>]"
-    pos, opts = take_options(args, {"interval": True, "polls": True})
+    form = "wait [--interval <seconds>] [--polls <n>] [--from <name>]"
+    pos, opts = take_options(args, {"interval": True, "polls": True, "from": True})
     want(pos, 0, 0, form)
     try:
         interval = float(opts.get("interval", DEFAULT_INTERVAL))
@@ -2172,8 +2205,10 @@ def cmd_wait(rec: Record, args: list) -> None:
         raise Usage(f"usage: {form}")
     if interval < 0 or (polls is not None and polls < 1):
         raise Usage(f"usage: {form}")
+    # The reply address of each word this poller sends: `--from`, or the session name, or none.
+    sender = opts.get("from") or current_session_name()
     token = uuid.uuid4().hex
-    stop_old_poller(claim_owner(rec, token))
+    stop_old_poller(claim_owner(rec, token), rec.name)
 
     def on_term(signum, frame):
         raise SystemExit(0)
@@ -2184,7 +2219,7 @@ def cmd_wait(rec: Record, args: list) -> None:
         while True:
             count += 1
             try:
-                wakes = poll_once(rec, token)
+                wakes = poll_once(rec, token, sender)
             except Superseded:
                 return
             if wakes:

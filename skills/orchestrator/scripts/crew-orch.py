@@ -42,18 +42,23 @@ Commands:
   close-item <item> [--continue] [--stop-processes]
   digest <item> [--diff-file <p>]
   resume [--read-only]
+  wait [--interval <seconds>] [--polls <n>]
 """
 
 from __future__ import annotations
 
 import base64
+import contextlib
 import fcntl
+import io
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -941,27 +946,29 @@ def cmd_refresh(rec: Record, args: list) -> None:
     if not results:
         return
 
-    def change(state):
-        stamp = now_iso()
-        for item_id, (number, result) in results.items():
-            item = state["items"].get(item_id)
-            if item is None or not item.get("pr") or item["pr"]["number"] != number:
-                continue
-            gh = item.get("github")
-            if result["fields"] is None:
-                if gh is not None:
-                    gh["error"] = result["error"]
-                continue
-            old = gh or {}
-            gh = dict(result["fields"])
-            queue = result["queue"] or {"in_queue": bool(old.get("in_queue")),
-                                        "queue_position": old.get("queue_position")}
-            gh.update(queue)
-            gh["refreshed_at"] = stamp
-            gh["error"] = result["error"]
-            item["github"] = gh
+    rec.mutate(lambda state: apply_refresh(state, results))
 
-    rec.mutate(change)
+
+def apply_refresh(state: dict, results: dict) -> None:
+    """Write what `read_pr` returned into each item's `github`."""
+    stamp = now_iso()
+    for item_id, (number, result) in results.items():
+        item = state["items"].get(item_id)
+        if item is None or not item.get("pr") or item["pr"]["number"] != number:
+            continue
+        gh = item.get("github")
+        if result["fields"] is None:
+            if gh is not None:
+                gh["error"] = result["error"]
+            continue
+        old = gh or {}
+        gh = dict(result["fields"])
+        queue = result["queue"] or {"in_queue": bool(old.get("in_queue")),
+                                    "queue_position": old.get("queue_position")}
+        gh.update(queue)
+        gh["refreshed_at"] = stamp
+        gh["error"] = result["error"]
+        item["github"] = gh
 
 
 # ---------------------------------------------------------------- helpers for the commands
@@ -1310,6 +1317,7 @@ def finalize(rec: Record, item_id: str, sender=None) -> list:
                 add_event(st, item_id, f"queued at GitHub (PR #{number})")
 
         rec.mutate(queue)
+        rec.mutate(lambda st: st["items"][item_id].__setitem__("queued_at_github", True))
         print(f"queued: {item_id} (PR #{number} is not merged yet)")
         return actions
 
@@ -1876,6 +1884,292 @@ def cmd_resume(rec: Record, args: list) -> None:
         rec.mutate(lambda st: st["pace"]["slots"].__setitem__("busy", live))
 
 
+# ---------------------------------------------------------------- wait
+
+DEFAULT_INTERVAL = 60.0
+INBOX_TEXT_CHARS = 80
+
+
+class Superseded(Exception):
+    """Another `wait` owns the record now: stop, and write nothing."""
+
+
+def check_owner(state: dict, token: str) -> None:
+    if (state.get("wait_owner") or {}).get("token") != token:
+        raise Superseded()
+
+
+def claim_owner(rec: Record, token: str):
+    """Write this poller as the owner, under the record lock. Return the old owner, or None."""
+    def change(state):
+        old = state.get("wait_owner")
+        state["wait_owner"] = {"token": token, "pid": os.getpid()}
+        state["wait_pid"] = os.getpid()
+        if "wait_seen_inbox" not in state:
+            state["wait_seen_inbox"] = [e["id"] for e in state["inbox"]]
+        return old
+
+    return rec.mutate(change)
+
+
+def release_owner(rec: Record, token: str) -> None:
+    """Clear the owner only when it is still this poller."""
+    def change(state):
+        if (state.get("wait_owner") or {}).get("token") == token:
+            state["wait_owner"] = None
+            state["wait_pid"] = None
+
+    try:
+        rec.mutate(change)
+    except (Fail, OSError):
+        pass
+
+
+def stop_old_poller(old) -> None:
+    """Stop an older `wait`, only when the process still runs a `crew-orch.py ... wait` command."""
+    pid = (old or {}).get("pid")
+    if not isinstance(pid, int) or pid <= 1 or pid == os.getpid():
+        return
+    rc, out, _ = sh(["ps", "-o", "command=", "-p", str(pid)], timeout=10)
+    words = out.split()
+    if rc != 0 or not any(w.endswith("crew-orch.py") for w in words) or "wait" not in words:
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return
+    for _ in range(40):
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return
+        time.sleep(0.1)
+
+
+def row_key(row: dict) -> str:
+    return str(row.get("id") or f"{(row.get('author') or {}).get('login')}|{row.get('createdAt')}|"
+                               f"{(row.get('body') or '')[:30]}")
+
+
+def rows_of(info: dict, field: str) -> list:
+    return [{"id": row_key(r), "author": (r.get("author") or {}).get("login") or "?",
+             "at": r.get("createdAt") or "", "text": " ".join((r.get("body") or "").split())[:INBOX_TEXT_CHARS],
+             "state": r.get("state") or ""} for r in info.get(field) or []]
+
+
+def poll_usage(rec: Record, token: str, state: dict) -> list:
+    pace = state["pace"]
+    rc, out, _ = sh(tool_cmd("CREW_USAGE_CMD", "crew-usage.py") + ["check", "--limit", str(pace.get("limit_pct", 95))],
+                    timeout=60)
+    words = out.split()
+    level = words[0] if words else None
+    prev = pace["mode"]
+    if level not in PACE_MODES or level == prev:
+        return []
+    tail = " ".join(words[1:])
+
+    def change(st):
+        check_owner(st, token)
+        p = st["pace"]
+        slots = p["slots"]
+        if level != "normal" and prev == "normal":
+            slots["normal_max"] = slots["max"]
+        if level == "slowed":
+            slots["max"] = 1
+        if level == "normal":
+            slots["max"] = slots.pop("normal_max", 3 if slots["max"] == 1 else slots["max"])
+        p["mode"] = level
+        add_event(st, None, f"mode {level} (was {prev})")
+
+    rec.mutate(change)
+    if level != "normal" and (prev == "normal" or level == "stopped"):
+        return [f"wake usage -: level={level} was={prev} {tail}".rstrip()]
+    if level == "normal":
+        return [f"wake usage -: reset level=normal was={prev} {tail}".rstrip()]
+    return []
+
+
+def quiet(call, *args):
+    """Run a command function with its stdout dropped."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        return call(*args)
+
+
+def poll_prs(rec: Record, token: str) -> list:
+    wakes = []
+    state = rec.read()
+    check_owner(state, token)
+    for item in sorted(state["items"].values(), key=lambda i: i["n"]):
+        if not item.get("pr") or item["stage"] in DONE_STAGES:
+            continue
+        item_id, repo, number = item["id"], item["repo"], item["pr"]["number"]
+        result = read_pr(repo, number)
+        if result["fields"] is None:
+            continue
+        out, err = run_gh(["pr", "view", str(number), "--repo", repo, "--json",
+                           "reviewDecision,reviews,comments,author"])
+        info = None
+        if not err:
+            try:
+                info = json.loads(out)
+            except ValueError:
+                info = None
+        found = {"wakes": [], "merged": False, "closed": False}
+
+        def change(st):
+            check_owner(st, token)
+            it = st["items"].get(item_id)
+            if it is None or not it.get("pr") or it["pr"]["number"] != number:
+                return
+            old = dict(it.get("github") or {})
+            apply_refresh(st, {item_id: (number, result)})
+            new = it.get("github") or {}
+            if old:
+                if new.get("checks") == "fail" and old.get("checks") != "fail":
+                    found["wakes"].append(("check", f"failed {', '.join(new.get('failed_checks') or []) or 'a check'}"))
+                if new.get("merge_state") == "DIRTY" and old.get("merge_state") != "DIRTY":
+                    found["wakes"].append(("conflict", "the PR conflicts with the base"))
+                if new.get("review_decision") == "APPROVED" and old.get("review_decision") != "APPROVED":
+                    found["wakes"].append(("review", "approved"))
+                if new.get("in_queue") != old.get("in_queue") and new.get("state") == "OPEN":
+                    pos = new.get("queue_position")
+                    found["wakes"].append(("queue", f"in queue {pos}" if new.get("in_queue") else "left the queue"))
+                if new.get("state") == "CLOSED" and old.get("state") != "CLOSED":
+                    found["closed"] = True
+                if (new.get("state") == "MERGED" and not it.get("words_sent")
+                        and (old.get("state") != "MERGED" or item_id in st["merge_queue"])):
+                    found["merged"] = True
+            if info is not None:
+                me = (info.get("author") or {}).get("login") or ""
+                reviews, comments = rows_of(info, "reviews"), rows_of(info, "comments")
+                before = it.get("watch")
+                if before is not None:
+                    seen = {r["id"] for r in before.get("reviews", [])}
+                    for r in reviews:
+                        if r["id"] not in seen and r["author"] != me:
+                            found["wakes"].append(("review", f"{r['author']} {r['state']} {r['text']}".strip()))
+                    seen = {r["id"] for r in before.get("comments", [])}
+                    for r in comments:
+                        if r["id"] not in seen and r["author"] != me:
+                            found["wakes"].append(("comment", f"{r['author']} {r['text']}".strip()))
+                it["watch"] = {"reviews": [{k: r[k] for k in ("id", "author", "at")} for r in reviews],
+                               "comments": [{k: r[k] for k in ("id", "author", "at")} for r in comments]}
+
+        rec.mutate(change)
+        wakes += [f"wake {kind} {item_id}: {text}" for kind, text in found["wakes"]]
+        if found["merged"] or found["closed"]:
+            check_owner(rec.read(), token)
+            try:
+                quiet(finalize, rec, item_id)
+            except (Code, Fail):
+                pass
+            if found["closed"]:
+                wakes.append(f"wake closed {item_id}: PR #{number} closed with no merge; its slot is released")
+    wakes += run_queued_merges(rec, token)
+    return wakes
+
+
+def run_queued_merges(rec: Record, token: str) -> list:
+    wakes = []
+    state = rec.read()
+    for item_id in list(state["merge_queue"]):
+        item = state["items"].get(item_id)
+        gh = (item or {}).get("github") or {}
+        if item is None or item.get("queued_at_github") or gh.get("state") != "OPEN" \
+                or gh.get("checks") not in ("pass", "none"):
+            continue
+        check_owner(rec.read(), token)
+        try:
+            quiet(cmd_merge, rec, [item_id, "--when-green"])
+        except Code as err:
+            if err.code == 11 or "not confirmed" in err.line:
+                continue
+            failure = (err.code, err.line)
+        except (Fail, Usage) as err:
+            failure = (1, str(err))
+        else:
+            continue
+
+        def drop(st):
+            check_owner(st, token)
+            if item_id in st["merge_queue"]:
+                st["merge_queue"].remove(item_id)
+            add_event(st, item_id, f"queued merge failed: exit {failure[0]}")
+
+        rec.mutate(drop)
+        wakes.append(f"wake merge-failed {item_id}: exit {failure[0]} {failure[1]}")
+    return wakes
+
+
+def poll_inbox(rec: Record, token: str) -> list:
+    state = rec.read()
+    seen = set(state.get("wait_seen_inbox") or [])
+    fresh = [e for e in state["inbox"] if e["id"] not in seen]
+    if not fresh:
+        return []
+
+    def change(st):
+        check_owner(st, token)
+        st["wait_seen_inbox"] = sorted(set(st.get("wait_seen_inbox") or []) | {e["id"] for e in fresh})
+
+    rec.mutate(change)
+    return [f"wake inbox {e.get('item') or '-'}: {e['id']} {e['text'][:INBOX_TEXT_CHARS]}"
+            for e in fresh if e["for"] == "orchestrator" and e["state"] == "open"]
+
+
+def poll_handoffs(rec: Record) -> list:
+    return [f"wake send {h['item']}: send-to {h['name']} told {rec.dir / h['path']}"
+            for h in rec.read()["handoffs"]]
+
+
+def poll_once(rec: Record, token: str) -> list:
+    state = rec.read()
+    check_owner(state, token)
+    wakes = poll_usage(rec, token, state)
+    wakes += poll_prs(rec, token)
+    wakes += poll_inbox(rec, token)
+    wakes += poll_handoffs(rec)
+    return wakes
+
+
+def cmd_wait(rec: Record, args: list) -> None:
+    form = "wait [--interval <seconds>] [--polls <n>]"
+    pos, opts = take_options(args, {"interval": True, "polls": True})
+    want(pos, 0, 0, form)
+    try:
+        interval = float(opts.get("interval", DEFAULT_INTERVAL))
+        polls = int(opts["polls"]) if "polls" in opts else None
+    except ValueError:
+        raise Usage(f"usage: {form}")
+    if interval < 0 or (polls is not None and polls < 1):
+        raise Usage(f"usage: {form}")
+    token = uuid.uuid4().hex
+    stop_old_poller(claim_owner(rec, token))
+
+    def on_term(signum, frame):
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, on_term)
+    count = 0
+    try:
+        while True:
+            count += 1
+            try:
+                wakes = poll_once(rec, token)
+            except Superseded:
+                return
+            if wakes:
+                for line in wakes:
+                    print(line)
+                sys.stdout.flush()
+                return
+            if polls is not None and count >= polls:
+                return
+            time.sleep(interval)
+    finally:
+        release_owner(rec, token)
+
+
 # ---------------------------------------------------------------- board
 
 
@@ -2268,6 +2562,7 @@ COMMANDS = {
     "show": cmd_show, "close": cmd_close, "merge": cmd_merge, "finalize": cmd_finalize,
     "handoff": cmd_handoff, "send": cmd_send, "launch": cmd_launch,
     "close-item": cmd_close_item, "digest": cmd_digest, "resume": cmd_resume,
+    "wait": cmd_wait,
 }
 
 

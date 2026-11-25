@@ -10547,3 +10547,13 @@ Deliberately different:
     - **Unexercised.** Only the seeded tests ran the watcher, the launcher's
       `window` and the `watch` step. No crew run has used a window session,
       and no real session measured the token figure.
+
+X. **`crew-record.py` changes one part of a list or an object — 2026-11-24.**
+   The item script-review found that `run set` only replaces a value. A script
+   that adds one session id had to write the whole list, and a script that
+   removes one result had to write the whole object. `run append` adds one
+   value to a list, `run delete` removes one key of an object and `run remove`
+   removes one value of a list. They run under the lock and in the atomic
+   write of `run set`. `test-crew-record.py` is the seeded test. `review-run.py`
+   and `plan-review.py` still use `run set`. No crew run has used the new
+   commands.

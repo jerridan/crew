@@ -13,6 +13,9 @@ usage:
   crew-record.py <record-dir> package <id> set <field> <json>
   crew-record.py <record-dir> run state <state>
   crew-record.py <record-dir> run set <dotted.field> <json>
+  crew-record.py <record-dir> run append <dotted.field> <json>
+  crew-record.py <record-dir> run delete <dotted.field>
+  crew-record.py <record-dir> run remove <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
   crew-record.py <record-dir> escalation <index> set <field> <json>
@@ -59,6 +62,15 @@ stamps `run.delivered_at`, and a later one never moves it. A write that sets
 rest of the object stays. It creates each missing level on the way down, and
 replaces a `null` level with an object. A level that holds a list, a string or
 a number exits with a message, because no path runs through one.
+`run append` adds one JSON value to the end of the list at a dotted path and
+leaves the other values. It creates the list when the field is absent or
+`null`. `run delete` removes one key of an object: the last part of the dotted
+path is the key. `run remove` removes the first value in the list at a dotted
+path that equals the JSON value. Each of the three runs under the same lock
+and in the same atomic replace as `run set`, and each exits 2 and writes
+nothing when the path is missing, when the field is not a list (`append` and
+`remove`) or not under an object (`delete`), when `remove` finds no equal
+value, or when the JSON does not parse.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes. `escalation <index> set` writes one
@@ -174,6 +186,53 @@ def set_dotted(target: dict, dotted: str, value) -> None:
         if not isinstance(target, dict):
             sys.exit(f"{'.'.join(keys[:depth + 1])} is not an object")
     target[keys[-1]] = value
+
+
+def parse_json(text: str):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as error:
+        die(f"not JSON: {text} ({error.msg})")
+
+
+def walk(target: dict, dotted: str):
+    """Return the value at a dotted path, or exit 2 when no level holds it."""
+    for key in dotted.split("."):
+        if not isinstance(target, dict) or key not in target:
+            die(f"no field {dotted}")
+        target = target[key]
+    return target
+
+
+def append_dotted(run: dict, dotted: str, value) -> None:
+    keys = dotted.split(".")
+    parent = run if len(keys) == 1 else walk(run, ".".join(keys[:-1]))
+    if not isinstance(parent, dict):
+        die(f"{'.'.join(keys[:-1])} is not an object")
+    if parent.get(keys[-1]) is None:
+        parent[keys[-1]] = []
+    if not isinstance(parent[keys[-1]], list):
+        die(f"{dotted} is not a list")
+    parent[keys[-1]].append(value)
+
+
+def delete_dotted(run: dict, dotted: str) -> None:
+    keys = dotted.split(".")
+    parent = run if len(keys) == 1 else walk(run, ".".join(keys[:-1]))
+    if not isinstance(parent, dict):
+        die(f"{'.'.join(keys[:-1])} is not an object")
+    if keys[-1] not in parent:
+        die(f"no field {dotted}")
+    del parent[keys[-1]]
+
+
+def remove_dotted(run: dict, dotted: str, value) -> None:
+    items = walk(run, dotted)
+    if not isinstance(items, list):
+        die(f"{dotted} is not a list")
+    if value not in items:
+        die(f"{dotted} has no value {json.dumps(value)}")
+    items.remove(value)
 
 
 # `goal-check.md` owns the one-round rule: a goal run runs one goal check.
@@ -559,6 +618,12 @@ def main_locked(argv: list[str]) -> None:
         elif rest[0] == "set":
             set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
             stamp_on_transition(run, before)
+        elif rest[0] == "append":
+            append_dotted(run, arg(rest, 1), parse_json(arg(rest, 2)))
+        elif rest[0] == "delete":
+            delete_dotted(run, arg(rest, 1))
+        elif rest[0] == "remove":
+            remove_dotted(run, arg(rest, 1), parse_json(arg(rest, 2)))
         else:
             usage()
     elif kind == "escalation":

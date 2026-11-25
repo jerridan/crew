@@ -46,6 +46,9 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> package add '<json objec
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-flight
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run append <dotted.field> '<json>'
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run delete <dotted.field>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run remove <dotted.field> '<json>'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index> "<answer>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> integrate <package-id> --review-head <sha> [--published]
@@ -69,6 +72,16 @@ a script file in the record, run with `bash <file>`, as `review-runner.md`'s
 `decision` writes `decisions.md`, and "`decisions.md`" below owns its three
 forms. `round` writes `run.rounds`, and the `rounds` row below owns its
 fields.
+
+**Change one part of a list or an object with `run append`, `run delete` and
+`run remove`, never with `run set`.** `run set` replaces the whole value.
+`run append` adds one JSON value to a list, and creates the list when it is
+absent. `run delete` removes one key of an object: the last part of the dotted
+path is the key. `run remove` removes the first value of a list that equals the
+JSON value. Each one exits 2 and writes nothing when its path is missing, when
+the field is not a list, or when `remove` finds no equal value. Each runs under
+the lock and in the atomic write of `run set`. `crew-record.py`'s own docstring
+owns the exact rules.
 
 **Never write `escalations` with `run set`.** That command replaces the key,
 so it drops every ask already in the list. `escalation add` appends one ask,

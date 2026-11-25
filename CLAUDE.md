@@ -27,9 +27,12 @@ and `test-launcher.sh` tests them with stub commands.
 `skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`
 against seeded records. `skills/project-lead/scripts/test-crew-record.py`
 tests the `run append`, `run delete` and `run remove` commands of
-`crew-record.py` against a seeded record. `skills/project-lead/scripts/crew-step.py` is code
+`crew-record.py`, and the `--if` condition of `run set` and `run append`,
+against a seeded record. `skills/project-lead/scripts/crew-step.py` is code
 too, and `test-crew-step.py` beside it tests it with a seeded repo, a bare
-remote and stub `gh`, `spend.py` and `crew-orch.py` commands.
+remote and stub `gh`, `spend.py`, `crew-orch.py`, `launcher.py` and
+`crew-usage.py` commands. `hooks/test-session-end.sh` tests
+`hooks/session-end.py` against seeded records.
 `review-run.py` and `plan-review.py` in the same directory are code
 too: `test-review-run.py` and `test-plan-review.py` test
 them with stub `claude`, `codex`, `timeout` and `uuidgen` commands.
@@ -63,14 +66,14 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | `crew-orch.py wait` and `launch`, and the orchestrator, from Bash; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/crew-record.py`, `spend.py`, `crew-stats.py`, `test-crew-stats.py` | `crew-record.py` writes one `state.json` field, appends to or deletes from one list or object of `run`, writes a `decisions.md` entry or a round stamp; `test-crew-record.py` is the seeded test of `run append`, `run delete` and `run remove`; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, the plan reviews run and skipped with their finding labels, a `kind` column and the untouched-draft rate over every record; `test-crew-stats.py` is the seeded test of `crew-stats.py` | the project lead, from Bash; a person runs `crew-stats.py` and `test-crew-record.py` |
-| `skills/project-lead/scripts/crew-step.py`, `skills/project-lead/scripts/test-crew-step.py`, `skills/project-lead/references/crew-step.md` | the fixed command sequences of a project lead, one call each: `launch-check`, `branch`, `verify`, `hand-over` and `cleanup`; the seeded test; the reference that owns the command line, the step lines and the exit codes | the project lead, from Bash; a person runs the test |
+| `skills/project-lead/scripts/crew-step.py`, `skills/project-lead/scripts/test-crew-step.py`, `skills/project-lead/references/crew-step.md` | the fixed command sequences of a project lead, one call each: `launch-check`, `branch`, `verify`, `hand-over`, `cleanup`, `park` and `unpark`; the seeded test; the reference that owns the command line, the step lines and the exit codes | the project lead, from Bash; a person runs the test |
 | `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
 | `skills/orchestrator/references/resume-and-close.md` | the resume of an orchestrator after a compaction or a restart, the close of an item and the close of a run | the orchestrator session |
 | `skills/orchestrator/references/subagent-items.md` | the subagent item: the test that makes an item one, its record, its dispatch, its PR window, its escalation to an implementer and its close | the orchestrator session |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; its fixed sequences in one call each: `merge`, `finalize`, `send`, `launch`, `close-item`, `digest`, `resume` and the poller `wait`; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
-| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py`, `hooks/session-start.py` | `SessionEnd` marks a dead run interrupted, except a delivered run, which the watcher keeps; `PreCompact` logs a compaction into the run; `SessionStart`, on `compact` and `resume`, adds the `crew-orch.py resume --read-only` lines to an orchestrator session whose id the record holds | the plugin loader, in every session |
-| `hooks/test-session-start.sh` | the seeded test of `session-start.py` | a person |
+| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py`, `hooks/session-start.py` | `SessionEnd` marks a dead run interrupted, except a delivered run, which the watcher keeps, and a parked run; `PreCompact` logs a compaction into the run; `SessionStart`, on `compact` and `resume`, adds the `crew-orch.py resume --read-only` lines to an orchestrator session whose id the record holds | the plugin loader, in every session |
+| `hooks/test-session-start.sh`, `hooks/test-session-end.sh` | the seeded tests of `session-start.py` and `session-end.py` | a person |
 | `hooks/orch-board.tsx`, `types/index.d.ts` | the board pane mod: `/orch-board` draws `crew-orch.py board --json` in a pane, with its last routine events, and a row number brings that implementer's tab to the front; the mod's `$.state` contract, named in `plugin.json` `types` | the plugin loader, from `modules` in `hooks/hooks.json` |
 | `tests/orch-board.test.tsx`, `tests/fixtures/` | the mod's tests, with a stub board command and a stub launcher; the board fixtures, which `test-crew-orch.sh` writes and checks | `claude plugin test`, run by a person |
 | `docs/design.md` | the living spec | a person |

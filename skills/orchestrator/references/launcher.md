@@ -272,17 +272,19 @@ The other fields are as in `start`.
 
 ```
 launcher.py window --name <session-name> --cwd <path> --prompt-file <file>
-                   [--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]
+                   [--model <model>] [--settings <file-or-json>]
+                   [--group <name>] [--terminal iterm2|tmux|herdr]
 ```
 
 `window` opens one interactive tab or window for a window session of a
 delivered run (`crew:delivered-window`). It makes no worktree and no branch,
 and it takes no `--checkout`. The watcher of `window-watch.py` runs it. The
 rule that only the launcher and `crew-usage.py` start a `claude` process
-holds. `--name`, `--model`, `--group` and `--terminal` have the meanings and
-the checks of `start`. The `--model` default is `opus`. `window` takes no
-`--settings` and no `--group-color`, and its `<json>` is
-`{"remoteControlAtStartup": false}`.
+holds. `--name`, `--model`, `--settings`, `--group` and `--terminal` have the
+meanings and the checks of `start`. The `--model` default is `opus`. With no
+`--settings`, the `<json>` is `{"remoteControlAtStartup": false}`. The
+watcher gives no `--settings`. `crew-step.py park` gives the value of
+`crew-usage.py settings`. `window` takes no `--group-color`.
 
 | Argument | Meaning |
 |---|---|

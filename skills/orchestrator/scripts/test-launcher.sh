@@ -2696,6 +2696,22 @@ reset_stub
 TMUX=/tmp/t,1,0 run window --name rec-w2 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --group grp
 r=1; [ "$rc" = 0 ] && [ "$(field model)" = '"opus"' ] && sh -c "$(cat "$STUB_DIR/tmux-cmd")" && grep -sqx -- opus "$STUB_DIR/claude-args" && r=0
 check 'window with no --model gives model opus' $r
+settings_is 'window with no --settings keeps {"remoteControlAtStartup": false}' '{"remoteControlAtStartup": false}'
+
+# window --settings: the meaning and the checks of start --settings.
+reset_stub
+TMUX=/tmp/t,1,0 run window --name rec-ws1 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" \
+  --settings '{"statusLine": {"type": "command", "command": "wrap \"q\" $x"}}'
+check 'window with a --settings JSON string exits 0' $([ "$rc" = 0 ]; echo $?)
+settings_is 'window --settings puts the object plus remoteControlAtStartup false in the tab command' \
+  '{"statusLine": {"type": "command", "command": "wrap \"q\" $x"}, "remoteControlAtStartup": false}'
+reset_stub
+TMUX=/tmp/t,1,0 run window --name rec-ws2 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --settings '{"remoteControlAtStartup": true}'
+settings_is 'window --settings keeps an explicit remoteControlAtStartup' '{"remoteControlAtStartup": true}'
+reset_stub
+TMUX=/tmp/t,1,0 run window --name rec-ws3 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --settings "$T/settings.json"
+settings_is 'window --settings reads and merges a file path value' \
+  '{"permissions": {"allow": ["Bash(ls)"]}, "remoteControlAtStartup": false}'
 
 # window on iTerm2 (the helper stub, then the osascript stub for stop).
 reset_stub
@@ -2757,6 +2773,9 @@ wusage 'with no --prompt-file' --name rec-w4 --cwd "$WINDIR"
 wusage 'with a missing cwd' --name rec-w4 --cwd "$T/no-such-dir" --prompt-file "$T/win-prompt.md"
 wusage 'with a missing prompt file' --name rec-w4 --cwd "$WINDIR" --prompt-file "$T/no-such.md"
 wusage 'with a bad name' --name Bad_Name --cwd "$WINDIR" --prompt-file "$T/win-prompt.md"
+for v in '[1]' 'not json' '"a string"' "$T/list.json" "$T/no-such.json"; do
+  wusage "with a non-object --settings '$v'" --name rec-w4 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --settings "$v"
+done
 
 cat "$T/git.log" >> "$T/git.log.before-window"
 mv "$T/git.log.before-window" "$T/git.log"

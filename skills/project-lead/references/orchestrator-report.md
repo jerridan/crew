@@ -50,6 +50,11 @@ command (`skills/orchestrator/SKILL.md`'s "Message discipline", rule 7). A
 window session sends its question by `SendMessage`, as above, and the answer
 comes by `say`.
 
+## A pause or stop message
+
+A pause or stop message from the orchestrator is a wait that `park.md`
+covers. Read its table before you wait in place.
+
 ## A park
 
 A park (`park.md`) writes two fields of your item, through `crew-orch.py

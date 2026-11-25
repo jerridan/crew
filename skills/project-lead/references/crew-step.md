@@ -259,7 +259,7 @@ reads that file and never writes it.
 | Step | What it does |
 |---|---|
 | `park` | Refuses the park with `FAIL park: <why>` and exit 1, and writes nothing. The refusals: no `state.json`; a `run.park` already set; no `run.orchestrator`; an orchestrator record or item that cannot be read, or an item with no `launch.tab` or no `launch.session_name`; a `run.repo` that is not the item's `launch.worktree`; a `git status --porcelain` in `run.checkout` (else `run.repo`) that prints a line. An untracked file counts. |
-| `record` | `crew-record.py run set park <json>`: `{reason, by, at, until, next, from_session, prompt, waiter: null}`. `from_session` is `$CLAUDE_CODE_SESSION_ID`. `prompt` is `<record-dir>/park/prompt-<n>.md`, where `<n>` counts parks from 1. |
+| `record` | `crew-record.py run set park <json>`, with the fields of `record-format.md`'s `park` row. `from_session` is `$CLAUDE_CODE_SESSION_ID`. `prompt` is `<record-dir>/park/prompt-<n>.md`, where `<n>` counts parks from 1. |
 | `helper` | Starts the helper in a new process session, with its output in `<record-dir>/park/park.log`. The line is `ok helper: started pid <pid>, log <path>`. |
 
 **The helper.** It writes one line per step to `park/park.log`, as `<UTC

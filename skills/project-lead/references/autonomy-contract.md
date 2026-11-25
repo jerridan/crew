@@ -174,7 +174,8 @@ answers in the session. Write each question with `crew-record.py escalation add`
 set `run_state: blocked`. Then wait — and when the batch went by message, wait
 by **ending your turn**. A message reaches an idle session as a new turn; a
 project lead that sits inside its own turn may never see the answer (design
-§15.72i). Never start the split under an assumption: the split is what the
+§15.72i). `park.md` says when to park the session instead of waiting in
+place. Never start the split under an assumption: the split is what the
 answers shape, and every later moment costs a fix round.
 
 An unanswered batch never becomes an assumption. A session that dies holding

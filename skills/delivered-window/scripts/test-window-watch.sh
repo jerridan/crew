@@ -100,6 +100,7 @@ case "$1" in
       shift
     done
     [ -e "$D/launch-fail-${name%-w*}" ] && { echo "launcher: tmux opened no window" >&2; exit 6; }
+    [ -e "$D/launch-fail10-${name%-w*}" ] && { echo "launcher: no claude process started on the tab iterm2:X (tty ttys001) within 60 seconds" >&2; exit 10; }
     cp "$pf" "$D/prompt-$name.md"
     n=$(( $(cat "$D/pane-n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$D/pane-n"
     printf '{"session_name": "%s", "model": "%s", "terminal": "tmux", "tab": "tmux:%%%s", "tab_group": "crew", "session_id": "uuid-%s", "cwd": "%s"}\n' "$name" "$model" "$n" "$n" "$cwd" ;;
@@ -400,6 +401,18 @@ chk 'a failed launch keeps the session as launching, with its events file' "$(sj
 rm -f "$STUB_DIR/launch-fail-lf"
 waitfor 12 "[ \"\$(sj lf window.session.status)\" = '\"live\"' ]"
 chk 'the retry makes the session live, with the same events file and no second burst' "$(sj lf window.session.status) $(sj lf window.session.name) $(nlines "$RECS/lf/window/events-1.jsonl") $(ls "$RECS"/lf/window/events-*.jsonl | wc -l | tr -d ' ')" '"live" "lf-w1" 1 1'
+# Exit 10 of the launcher (no claude process started) is a failed launch as any other.
+mkrec lf10
+: > "$STUB_DIR/launch-fail10-lf10"
+ww start "$RECS/lf10" --poll 1 --quiet 2 --cap 5
+emit lf10 "review 702 ida $TS COMMENTED launch me"
+waitfor 12 "[ \"\$(nwin lf10)\" -ge 2 ]"
+chk 'a launch that exits 10 is retried like any failed launch' "$([ "$(nwin lf10)" -ge 2 ] && echo yes)" yes
+chk 'a launch that exits 10 keeps the session as launching, with its events file' "$(sj lf10 window.session.status) $(nlines "$RECS/lf10/window/events-1.jsonl")" '"launching" 1'
+rm -f "$STUB_DIR/launch-fail10-lf10"
+waitfor 12 "[ \"\$(sj lf10 window.session.status)\" = '\"live\"' ]"
+chk 'the retry after exit 10 makes the session live' "$(sj lf10 window.session.status)" '"live"'
+chk 'the launch call of the watcher has a timeout of 300 seconds' "$(grep -c '^LAUNCH_TIMEOUT = 300$' "$here/window-watch.py")" 1
 # A restart over a launching record finds the tab first.
 mkrec lf2
 ww start "$RECS/lf2" --poll 1 --quiet 2 --cap 5

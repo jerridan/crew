@@ -1437,6 +1437,7 @@ cat >"$TMP/bin/launchstub" <<EOF
 #!/usr/bin/env bash
 echo "\$*" >>"$TMP/launcher.log"
 if [ "\$1" = start ]; then
+  [ -f "$TMP/exit10" ] && { echo "launcher: no claude process started on the tab iterm2:X (tty ttys001) within 60 seconds; the worktree stays at W (the tab iterm2:X is closed)" >&2; exit 10; }
   name=""
   while [ \$# -gt 0 ]; do [ "\$1" = --name ] && name="\$2"; shift; done
   [ -f "$TMP/no-session" ] || echo "{\"sessionId\": \"i-\$name\", \"name\": \"\$name\"}" >"$TMP/sessions/\$name.json"
@@ -1481,6 +1482,30 @@ rm -f "$TMP/no-session"
 ljcheck 's["pace"]["slots"]["busy"] == 2'
 pass
 
+STEP="R3 launch with exit 10 of the launcher fails with its line, prints no goal-wait and writes nothing"
+echo "the goal of l3" >"$TMP/goal3.md"
+touch "$TMP/exit10"
+expect_exit 1 lorch launch l3 --goal-file "$TMP/goal3.md" --wait-seconds 1
+grep -q 'launcher.py start exited 10: launcher: no claude process started on the tab iterm2:X' "$TMP/err" || fail "the line of the launcher is not in the error: $(cat "$TMP/err")"
+one_line_err
+! grep -q 'goal-wait' "$TMP/out" "$TMP/err" || fail "a goal-wait line was printed"
+rm -f "$TMP/exit10"
+ljcheck 's["items"]["l3"]["launch"] == {} and s["pace"]["slots"]["busy"] == 2'
+pass
+
+STEP="R3 the launcher calls of launch and of the resume of an item have a timeout above 180 seconds"
+python3 - "$ORCH_PY" <<'PYT' || fail "a launcher call has a short timeout"
+import re, sys
+src = open(sys.argv[1]).read()
+m = re.search(r"^LAUNCH_TIMEOUT = (\d+)$", src, re.M)
+assert m and int(m.group(1)) >= 300, "LAUNCH_TIMEOUT"
+for what in ("launcher.py start exited", "launcher.py resume exited"):
+    i = src.index(what)
+    call = src[:i].rsplit("sh(argv", 1)[1]
+    assert call.startswith(", timeout=LAUNCH_TIMEOUT)"), (what, call[:40])
+PYT
+pass
+
 STEP="R3 launch refuses at slowed and at a full slot count with exit 3, and writes nothing"
 expect_exit 0 lorch pace set '{"mode": "slowed"}'
 expect_exit 3 lorch launch l3 --wait-seconds 1
@@ -1489,7 +1514,7 @@ expect_exit 0 lorch pace set '{"mode": "normal", "slots": {"max": 2}}'
 expect_exit 3 lorch launch l3 --wait-seconds 1
 one_line_err
 ljcheck 's["items"]["l3"]["launch"] == {} and s["pace"]["slots"]["busy"] == 2'
-[ "$(grep -c '^start ' "$TMP/launcher.log")" -eq 2 ] || fail "start ran for a refused launch"
+[ "$(grep -c '^start ' "$TMP/launcher.log")" -eq 3 ] || fail "start ran for a refused launch"
 pass
 
 # ---------------------------------------------------------------- close-item (R4)
@@ -1502,6 +1527,7 @@ echo "\$*" >>"$TMP/launcher.log"
 sub=\$1
 case "\$sub" in
   start|resume)
+    [ -f "$TMP/exit10" ] && { echo "launcher: no claude process started on the tab iterm2:X (tty ttys001) within 60 seconds; the worktree stays at W (the tab iterm2:X is closed)" >&2; exit 10; }
     name=""; prev=""
     for a in "\$@"; do [ "\$prev" = --name ] && name="\$a"; prev="\$a"; done
     [ "\$sub" = resume ] || [ -f "$TMP/no-session" ] || echo "{\"sessionId\": \"i-\$name\", \"name\": \"\$name\"}" >"$TMP/sessions/\$name.json"
@@ -1700,6 +1726,19 @@ grep -q '^r9 close: ' "$TMP/out" || fail "r9 should close"
 cmp -s "$TMP/rsm-before.json" "$RD/orchestrator.json" || fail "read-only changed the record"
 ! grep -q '^resume \|^start \|^stop ' "$TMP/launcher.log" || fail "read-only started something: $(cat "$TMP/launcher.log")"
 ! grep -q 'ensure' "$TMP/watch.log" || fail "read-only ran ensure"
+pass
+
+STEP="R9 resume with exit 10 of the launcher gives a notice line with its text and keeps the launch of the item"
+cp "$RD/orchestrator.json" "$TMP/rsm-exit10.json"
+touch "$TMP/exit10"
+expect_exit 0 rorch resume
+rm -f "$TMP/exit10"
+grep -q '^r2 notice: launcher.py resume exited 10: launcher: no claude process started' "$TMP/out" || fail "no notice with the launcher line: $(cat "$TMP/out")"
+python3 - "$TMP/rsm-exit10.json" "$RD/orchestrator.json" <<'PYX' || fail "a failed resume changed the launch of r2"
+import json, sys
+a, b = (json.load(open(f)) for f in sys.argv[1:3])
+sys.exit(0 if a["items"]["r2"]["launch"] == b["items"]["r2"]["launch"] else 1)
+PYX
 pass
 
 STEP="R9 resume writes the changed tab and the slot count, resumes a gone item, and ensures a delivered one"

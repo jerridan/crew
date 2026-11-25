@@ -10680,7 +10680,8 @@ Deliberately different:
       in the run's record, `evidence/wakes.py` and `evidence/wake-cost.md`.
     - **Unexercised.** Only the seeded tests ran the park.
 
-169. **iTerm2 types a short line, and a launch checks for `claude` — 2026-11-25, `launcher.py`, jerridan/crew#192.**
+169. **iTerm2 types a short line, and a launch checks for `claude` —
+    2026-11-25, `launcher.py`, jerridan/crew#192.**
     On iTerm2, `launcher.py` typed the whole start command into the new tab.
     When the shell was not ready, the tty was in line mode, and macOS keeps
     at most 1024 bytes of one line (the canonical line limit). A longer

@@ -48,12 +48,17 @@ export type OrchBoardSection = {
   rows: OrchBoardRow[]
 }
 
+// One routine event of the board JSON. A record with no event has no
+// `events` key.
+export type OrchBoardEvent = { at: string; item: string; text: string; age: string }
+
 export type OrchBoard = {
   version: number
   orch: string
   plan: { windows: OrchBoardWindow[]; word: string } | null
   needs_you: { count: number; entries: OrchBoardEntry[] }
   sections: OrchBoardSection[]
+  events?: OrchBoardEvent[]
   done: number
   legend: string
 }

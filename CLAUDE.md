@@ -56,6 +56,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
+| `skills/project-lead/references/park.md` | the park: when a project lead ends its session at a long wait, the waiter session that takes its place and the wake; `crew-step.md` owns the `park` and `unpark` command lines | a project lead with an orchestrator, at a long wait; a waiter, from its first prompt |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/references/reviewer-blocks/*.md` | the reviewer blocks of a headless review, one file each: the goal-check block, the review block, the later-round block with its parts, the resume prompt and the replacement sentence. A block lives in this one file | `review-run.py`, at run time |
 | `skills/project-lead/scripts/review-run.py`, `plan-review.py`, `test-review-run.py`, `test-plan-review.py` | one round of the headless review in one call, with its record writes; the plan review in a `run` call and a `decide` call; their seeded tests | the project lead, from Bash, as `review-runner.md` and `plan-review.md` say; a person runs the tests |
@@ -84,7 +85,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 ## Build state
 
 Stages 0 through 7 are built: seven agents — the six workers and the
-read-only `crew:scout` — sixteen references, both hooks and all four of
+read-only `crew:scout` — seventeen references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
@@ -154,6 +155,10 @@ successful deploy of the merge commit is the ship word. A repo with
 `Deploy: none` ships at the merge, and a repo with no deploy by the default
 rule ships 2 minutes after it (§15.137). The watch ran only against a seeded record, and no crew
 run has used it (§15.127).
+
+The park is built: a project lead with an orchestrator ends its session at a
+long wait and a small waiter session takes its place, with the same name
+(§15.NNN). Only the seeded tests have run it, and no crew run has used it.
 
 The window sessions are built: the project lead ends at the hand-over, a
 watcher with no model (`window-watch.py`) watches the PR, CI and the deploy,
@@ -283,6 +288,8 @@ Each reference owns one subject and is canonical for it:
   runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `resume.md` — what `--resume` reopens, re-enters and re-runs.
+- `park.md` — when a project lead parks, the call, the waiter's rules and the
+  wake.
 - `orchestrator-report.md` — what a project lead that an orchestrator
   started writes into the orchestrator record, and when.
 - `skills/review/references/github-review.md` — what a review run posts.

@@ -501,10 +501,11 @@ usage window, do this:
    step.
 4. Tell the principal in one line.
 5. Arm `crew-usage.py wait` as a background Bash command. It costs no turn,
-   and its exit wakes you.
+   and its exit wakes you. `park.md` says when to park the session after you
+   arm it, and when to wait in place.
 
-When `wait` exits, resume with no word from the principal, and arm the
-`watch` again. A new value of the line, sent to you, replaces the old one.
+When `wait` exits while you wait in place, resume with no word from the
+principal, and arm the `watch` again. A new value of the line, sent to you, replaces the old one.
 `skills/orchestrator/references/usage.md` owns the levels, the limit and the
 file.
 

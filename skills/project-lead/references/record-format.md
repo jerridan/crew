@@ -15,7 +15,8 @@ One directory per goal, outside the target repo (design §4):
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
-├── handover.md       the nine headings a window session reads, written at the hand-over
+├── handover.md       the nine headings a window session reads, written at the hand-over and at a park
+├── park/             prompt-<n>.md, the waiter's first prompt; park.log, one line per helper step
 ├── window/           the watcher's files: watcher.log, watcher.json, pending.jsonl, inbox.jsonl, events-<n>.jsonl, prompt-<n>.md
 ├── state.json.lock   the lock that crew-record.py and the SessionEnd hook take around each write
 ├── reports/          one report per package, written by its IC
@@ -743,6 +744,8 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `worktree_base` | the absolute path every worktree of this run lives under: territory worktrees and a held checkout under `worktrees/`, the review worktree under `review-worktrees/`. Written at the preference sweep by `full-path.md`'s launch check 1, with `run set worktree_base '"<path>"'`. It is `<record-dir>`, or `<repo>/.claude/worktrees/crew/<goal-slug>` in a worktree-isolated session whose guard refuses `<record-dir>` (design §15.126). Absent on a record written before T80 and on a review run: read `<record-dir>` then. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s "A new orchestrator name"). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `orchestrator` | `{name, item}`, the orchestrator that started this run and the item id it uses for the run. `name` is the orchestrator's record name, fixed at its `init`. It can differ from the name of the orchestrator's session now, which `principal` holds. Written with `run set orchestrator <json>` when the goal carries an `Orchestrator: <name>, item <id>` line (`orchestrator-report.md`). Absent when no orchestrator started the run, and then the run reports to none. |
+| `park` | `null`, or `{reason, by, at, until, next, from_session, prompt, waiter}`, the park that holds the run now. `reason` is `usage`, `pause` or `question`. `by` is `usage`, `project-lead` for a question, or the principal's name for a pause. `until` is epoch seconds, or `null`. `next` is the step the resumed run takes first. `from_session` is the id of the session that parked, `prompt` the path of the waiter's prompt file. `waiter` is `null`, or `{name, session_id, tab, terminal, tab_group, model, started_at}`, and `crew-step.py park` writes it only while the park is still its own. The `SessionEnd` hook treats a run with a park as not live, and ignores the end of a retired session: the `from_session` of the park, or of a `parks` entry that a different session woke. `park.md` owns when a park starts, and `crew-step.md` the commands. Absent on a run that never parked. |
+| `parks` | a list, one entry per ended park: the `park` object plus `woke: {at, by, session_id}`. A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`. Absent until the first park ends. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
 | `delivered_at` | ISO-8601 UTC timestamp `crew-record.py` stamps once, on the first write that sets `run_state` to `delivered` — the `deliver` command, `run state delivered`, or `run set run_state delivered`. It is when the work was handed over: the PR opened, or the report ended. A later `blocked → delivered` or `interrupted → delivered` never moves it, and a run that goes `delivered → complete` keeps it, so the two stamps bound the whole delivered window. |
 | `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `ship` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` or `delivered` run never gets one, and `--resume` never sets one — only the ship word does. |
@@ -935,7 +938,8 @@ describes: the initial prediction, then a promotion with its cause.
 
 ## `handover.md` and `window/`
 
-The project lead writes `handover.md` at the hand-over, and each window
+The project lead writes `handover.md` at the hand-over and at a park
+(`park.md`), and each window
 session appends to it. A window session reads `charter.md`, `state.json`,
 `handover.md`, the last entries of `decisions.md` that it needs, and its
 events. Nothing else is a source of fact. So anything that only the build
@@ -954,7 +958,8 @@ The file holds these nine headings, in this order. An empty heading says
 6. `## Standing words`: each word given mid-run, such as a limit, who merges,
    a push rule or a shell workaround.
 7. `## Other PRs and next goals`: each one the run started.
-8. `## Pause state`: who paused, until when, and what stopped.
+8. `## Pause state`: who paused, until when, and what stopped. At a park it
+   holds one line that points at `run.park`.
 9. `## Background waits`: what each background wait waited for.
 
 `window/` holds the watcher's files:

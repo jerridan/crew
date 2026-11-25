@@ -66,7 +66,7 @@ a number exits with a message, because no path runs through one.
 leaves the other values. It creates the list when the field is absent or
 `null`. `run delete` removes one key of an object: the last part of the dotted
 path is the key. `run remove` removes the first value in the list at a dotted
-path that equals the JSON value. Each of the three runs under the same lock
+path that equals the JSON value in value and in JSON type. Each of the three runs under the same lock
 and in the same atomic replace as `run set`, and each exits 2 and writes
 nothing when the path is missing, when the field is not a list (`append` and
 `remove`) or not under an object (`delete`), when `remove` finds no equal
@@ -230,9 +230,13 @@ def remove_dotted(run: dict, dotted: str, value) -> None:
     items = walk(run, dotted)
     if not isinstance(items, list):
         die(f"{dotted} is not a list")
-    if value not in items:
-        die(f"{dotted} has no value {json.dumps(value)}")
-    items.remove(value)
+    # Python equality treats 1, 1.0 and True as equal, but JSON does not, so
+    # the match checks the type as well.
+    for i, item in enumerate(items):
+        if json.dumps(item, sort_keys=True) == json.dumps(value, sort_keys=True):
+            del items[i]
+            return
+    die(f"{dotted} has no value {json.dumps(value)}")
 
 
 # `goal-check.md` owns the one-round rule: a goal run runs one goal check.

@@ -78,8 +78,12 @@ fields.
 `run append` adds one JSON value to a list, and creates the list when it is
 absent. `run delete` removes one key of an object: the last part of the dotted
 path is the key. `run remove` removes the first value of a list that equals the
-JSON value. Each one exits 2 and writes nothing when its path is missing, when
-the field is not a list, or when `remove` finds no equal value. Each runs under
+JSON value in value and in JSON type, so `1`, `1.0` and `true` differ. Each
+one exits 2 and writes nothing when its JSON does not parse (`append` and
+`remove`) or when a level above its last path part is missing or is not an
+object. `append` also exits 2 when the field is not a list. `delete` also exits
+2 when the key is missing. `remove` also exits 2 when the field is missing or
+is not a list, or when it finds no equal value. Each runs under
 the lock and in the atomic write of `run set`. `crew-record.py`'s own docstring
 owns the exact rules.
 

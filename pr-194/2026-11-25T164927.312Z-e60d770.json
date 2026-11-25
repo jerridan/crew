@@ -1,0 +1,872 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 194,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/194"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "2f01181d36b312a7243a5bc86d008dd9bd773478",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-194/2026-11-25T162148.046Z-2f01181.json",
+      "open": [],
+      "dismissed": [
+        "4fa54a17c2940ca0",
+        "83cbf99699211423"
+      ],
+      "fetch_failed": false
+    },
+    "base": "b774b0248af3bfd89980b8d4aecb6aea74836d7d",
+    "head": "e60d7704178f7abea922d79c0845fe54c5d85b10",
+    "started_at": "2026-11-25T16:49:27.312Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer\n\n## Summary\n\nThe orchestrator can start an implementer in a different terminal from its own, for example a tmux pane while the orchestrator runs in iTerm2. Before this change, the launcher's `find` and `groups` commands looked only in the caller's own terminal, so they did not see that implementer. As a result, the orchestrator's resume read a live implementer as gone, and could open a second tab for one conversation. Now `find` and `groups` take a `--terminal` option, and the orchestrator passes the terminal that it stored at the launch.\n\nCloses #193\n\n**Ticket:** [jerridan/crew#193](https://github.com/jerridan/crew/issues/193)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/launcher.md` owns the launcher's interface: \"Terminals\", `resume` check 4, `groups`, `find` and the exit codes.\n- `skills/orchestrator/references/orchestrator-record.md` owns `crew-orch.py resume`.\n- `skills/orchestrator/references/resume-and-close.md` owns the resume steps of an orchestrator.\n- The new finding in `docs/design.md` is §15.167, the number the orchestrator assigned. The plugin version is 0.1.135.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: `find` and `groups` take `--terminal iterm2|tmux|herdr` and pass it to `detect_terminal`, so rule 1 of \"Terminals\" applies. With no flag, the result does not change. The output formats and exit codes do not change.\n- `skills/orchestrator/scripts/crew-orch.py`: `find_handles` adds `--terminal <launch.terminal>` when the item stores a terminal.\n- `skills/orchestrator/scripts/test-launcher.sh`: iTerm2 caller with tmux implementer (`find`, and `find` with no flag as the old limit), tmux caller with iTerm2 implementer, `groups --terminal tmux` from iTerm2, `find --terminal herdr` from iTerm2, a bad `--terminal` value, and `resume --terminal tmux` from iTerm2 exits 8.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: an item with `launch.terminal: tmux` gets `--terminal tmux` on its `find` and resumes as `rejoin`. An item with no stored terminal gets no flag.\n- `skills/orchestrator/references/launcher.md`, `orchestrator-record.md`, `resume-and-close.md`: these files now agree with the code.\n- `docs/design.md`: the finding §15.167.\n\n### Constraints that applied\n\n- The version is not bumped, because the orchestrator owns the `version` in both manifests.\n- The README is not changed, because it does not document `launcher.py` options.\n- issue-192 changes the same launcher files (the tab command and the start check). This PR changes only `find`, `groups` and `find_handles`, and adds a test for `resume` without a code change there.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 340 of 340 checks passed.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- The red commit failed the new `find` and `groups` checks before the code change. The checks for a bad `--terminal` value and for `resume` exit 8 passed already, because `resume` already gave its terminal to the match. They stay as regression tests.\n\n### Known gaps\n\n- Only the seeded tests ran the change. No orchestrator ran it against a real tmux pane or iTerm2 tab.\n\n### Decisions\n\n- **A `--terminal` option, not a scan of every terminal.** A scan needs a presence check for each terminal, and an absent iTerm2 makes the `osascript` listing fail with exit 6. The item already stores its terminal, so the option costs nothing.\n- **`groups` is in scope.** It has the same gap, and the orchestrator picks a group for `start --terminal <t>`.\n- **Light path.** One package, a runnable criterion and no open preference question.\n\n### Charter\n\nThe goal: `launcher.py find` sees an implementer in the terminal that its `launch` object names, whatever terminal the caller runs in. Each caller that depends on that match gets the same result: the open-tab check of `launcher.py resume`, and the resume of an orchestrator in `crew-orch.py`. The seeded tests cover it, and the references that own these interfaces agree with the code.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a --terminal option to the launcher's find and groups commands and changes crew-orch's find call, which is a CLI interface and logic change that affects resume behavior.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: find(), groups(), parse()",
+        "skills/orchestrator/scripts/crew-orch.py: find_handles",
+        "skills/orchestrator/scripts/test-launcher.sh: new find/groups --terminal tests",
+        "skills/orchestrator/scripts/test-crew-orch.sh: issue 193 test"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "New --terminal arg on find and groups. detect_terminal(a.terminal) is now called with an argument. Check that detect_terminal handles the override and that groups(a) is called correctly."
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "find_handles passes --terminal from launch.terminal when the item stores it."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "New tests for the find, groups and resume --terminal override."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "New test that resume passes --terminal to find."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.135."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.135."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 167."
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Docs for the new flag and the exit-code order."
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Docs note on resume."
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "Docs note on resume."
+        }
+      ],
+      "summary": "`launcher.py find` and `groups` now accept `--terminal iterm2|tmux|herdr`, which overrides detection from the caller's environment. `crew-orch.py resume` passes the item's stored `launch.terminal` to `find`, so a live tmux implementer is no longer read as gone when the orchestrator runs in iTerm2. The change also adds tests, docs and a version bump."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a --terminal option to the launcher's find and groups commands and changes crew-orch's find call, which is a CLI interface and logic change that affects resume behavior.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5724,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5041,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005151000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 333,
+              "cacheReadInputTokens": 10293,
+              "cacheCreationInputTokens": 4550,
+              "webSearchRequests": 0,
+              "costUSD": 0.0451266,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 92,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0456417
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13730,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5033,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005143000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1007,
+              "cacheReadInputTokens": 42267,
+              "cacheCreationInputTokens": 7449,
+              "webSearchRequests": 0,
+              "costUSD": 0.0882094,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 163,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0887237
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9473,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5027,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005137000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 750,
+              "cacheReadInputTokens": 24942,
+              "cacheCreationInputTokens": 5637,
+              "webSearchRequests": 0,
+              "costUSD": 0.0651004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 152,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0656141
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 6338,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15106,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015211,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 557,
+              "cacheReadInputTokens": 35809,
+              "cacheCreationInputTokens": 16866,
+              "webSearchRequests": 0,
+              "costUSD": 0.0766229,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 297,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.07814399999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3092,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5027,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005132,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 74,
+              "cacheReadInputTokens": 10487,
+              "cacheCreationInputTokens": 4536,
+              "webSearchRequests": 0,
+              "costUSD": 0.0398734,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0403866
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 6538,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5025,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005135000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 457,
+              "cacheReadInputTokens": 27062,
+              "cacheCreationInputTokens": 5956,
+              "webSearchRequests": 0,
+              "costUSD": 0.031108200000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 124,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0316217
+        }
+      }
+    ],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6061504836,
+      "review_url": "https://github.com/jerridan/crew/pull/194#pullrequestreview-6061504836",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 139360375835
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5975,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9570,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009670000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 949,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 9083,
+            "webSearchRequests": 0,
+            "costUSD": 0.045952200000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04691920000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 3092,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5027,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005132,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 74,
+            "cacheReadInputTokens": 10487,
+            "cacheCreationInputTokens": 4536,
+            "webSearchRequests": 0,
+            "costUSD": 0.0398734,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0403866
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5724,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5041,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005151000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 333,
+            "cacheReadInputTokens": 10293,
+            "cacheCreationInputTokens": 4550,
+            "webSearchRequests": 0,
+            "costUSD": 0.0451266,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 92,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0456417
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6338,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15106,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015211,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 557,
+            "cacheReadInputTokens": 35809,
+            "cacheCreationInputTokens": 16866,
+            "webSearchRequests": 0,
+            "costUSD": 0.0766229,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 297,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07814399999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 9473,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5027,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005137000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 750,
+            "cacheReadInputTokens": 24942,
+            "cacheCreationInputTokens": 5637,
+            "webSearchRequests": 0,
+            "costUSD": 0.0651004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 152,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0656141
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6538,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5025,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005135000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 457,
+            "cacheReadInputTokens": 27062,
+            "cacheCreationInputTokens": 5956,
+            "webSearchRequests": 0,
+            "costUSD": 0.031108200000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 124,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0316217
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 13730,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5033,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005143000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1007,
+            "cacheReadInputTokens": 42267,
+            "cacheCreationInputTokens": 7449,
+            "webSearchRequests": 0,
+            "costUSD": 0.0882094,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 163,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0887237
+      }
+    ],
+    "total_cost_usd": 0.397051,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 49,
+      "gather": 305,
+      "scope": 17,
+      "triage": 7090,
+      "find_verify": 15273,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

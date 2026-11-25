@@ -97,7 +97,7 @@ try:
     check("remove 1 skips true", state()["run"]["types"] == [True, 1.0, "1"])
     rec("run", "remove", "types", "true")
     check("remove true skips numbers", state()["run"]["types"] == [1.0, "1"])
-    refused("remove "2" finds no value of any type", "run", "remove", "types", '"2"')
+    refused("remove two finds no value of any type", "run", "remove", "types", '"2"')
     refused("remove an absent value", "run", "remove", "session_ids", '"zz"')
     refused("remove from an object", "run", "remove", "results", "1")
     refused("remove from a missing field", "run", "remove", "nope", "1")

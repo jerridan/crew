@@ -14,7 +14,11 @@ here=$(cd "$(dirname "$0")" && pwd)
 L="$here/launcher.py"
 T=$(mktemp -d)
 # Each test process that may stay has its pid in $T/pids; the exit kills it.
-cleanup() { [ -e "$T/pids" ] && kill -9 $(cat "$T/pids") 2>/dev/null; rm -rf "$T"; }
+cleanup() {
+  [ -e "$T/pids" ] && kill -9 $(cat "$T/pids") 2>/dev/null
+  [ -e "$T/launch-files" ] && xargs rm -f < "$T/launch-files"
+  rm -rf "$T"
+}
 trap cleanup EXIT
 fails=0
 total=0
@@ -132,7 +136,12 @@ fi
 case "$2" in
   start) echo 'OSA-0001' ;;
   focus|stop) if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then echo ok; else echo gone; fi ;;
-  ttys) cat "$D/osa-ttys" 2>/dev/null ;;
+  ttys)
+    cat "$D/osa-ttys" 2>/dev/null
+    # auto-tab: the tab that a launch opens has a tty (osa-ttys-manual: it has none).
+    if [ -e "$D/auto-tab" ] && [ ! -e "$D/osa-ttys-manual" ]; then
+      for id in ABC-123 OSA-0001 T-1; do echo "$id /dev/ttysAUTO"; done
+    fi ;;
   screen)
     [ -e "$D/screen-fail" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
     if [ -e "$D/osa-entered" ]; then cat "$D/osa-screen" 2>/dev/null; else cat "$D/osa-screen-before" 2>/dev/null; fi ;;
@@ -299,16 +308,20 @@ STUB
 # ps and lsof stubs: they run the real tool, so the launcher sees each real
 # process. Files: ps-tty (`<pid> <tty>` lines: the tty that ps shows for that
 # pid), ps-extra (more ps lines, of processes that do not exist), lsof-extra
-# (more lsof lines), lsof-fail (lsof fails).
+# (more lsof lines), lsof-fail (lsof fails), ps-fail (ps fails), auto-tab and
+# no-claude (see the osascript stub: a claude on the tty of the new tab).
 REAL_PS=$(command -v ps)
 REAL_LSOF=$(command -v lsof)
 export REAL_PS REAL_LSOF
 cat > "$T/bin/ps" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
+[ -e "$D/ps-fail" ] && { echo "ps: stub failure" >&2; exit 1; }
 "$REAL_PS" "$@" | awk -v f="$D/ps-tty" 'BEGIN { while ((getline l < f) > 0) { split(l, a, " "); t[a[1]] = a[2] } }
   { if ($1 in t) $3 = t[$1]; print }'
 cat "$D/ps-extra" 2>/dev/null
+# auto-tab: a claude runs on the tty of the tab that a launch opens (no-claude: none).
+[ -e "$D/auto-tab" ] && [ ! -e "$D/no-claude" ] && echo "99001 1 ttysAUTO claude"
 exit 0
 STUB
 cat > "$T/bin/lsof" <<'STUB'
@@ -367,6 +380,38 @@ now_ms() { python3 -c 'import time; print(int(time.time() * 1000))'; }
 now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 wtcount() { (cd "$T/co" && git worktree list | wc -l | tr -d ' '); }
 reset_stub() { rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"; }
+# auto_tab: the next launches on iTerm2 find a claude on the tty of their tab.
+auto_tab() { : > "$STUB_DIR/auto-tab"; }
+# launch_file: the launch file that the typed line of the last launch names. It
+# is noted, so the exit removes it.
+launch_file() {
+  f=$(cat "$STUB_DIR/uv.log" "$STUB_DIR/osa.log" 2>/dev/null | grep -o "/tmp/crew-launch-[A-Za-z0-9_]*\.sh" | head -1)
+  [ -n "$f" ] && echo "$f" >> "$T/launch-files"
+  echo "$f"
+}
+# typed_line: the text that the last launch typed, from the helper or osascript log.
+typed_line() {
+  python3 - "$STUB_DIR" <<'PY2'
+import os, sys
+d = sys.argv[1]
+try:
+    for l in open(os.path.join(d, "uv.log")):
+        a = l.rstrip("\n").split("|")
+        if "--command" in a:
+            print(a[a.index("--command") + 1], end=""); sys.exit(0)
+except OSError:
+    pass
+try:
+    for l in open(os.path.join(d, "osa.log")):
+        a = l.rstrip("\n").split("|")
+        if a[:2] == ["-", "start"]:
+            print(a[3], end=""); sys.exit(0)
+except OSError:
+    pass
+sys.exit(1)
+PY2
+}
+export CREW_LAUNCHER_START_WAIT=1
 # field <name>: one field of the start output, as JSON.
 field() { python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$T/out" "$1" 2>/dev/null; }
 
@@ -564,7 +609,7 @@ r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$CO/.claude/work
 check 'a failed tmux window exits 6, keeps the worktree and names it' $r
 
 # -- iterm2 ----------------------------------------------------------------
-reset_stub
+reset_stub; auto_tab
 TERM_PROGRAM=iTerm.app run start --name it1 --model m --principal p --checkout "$CO" --group grp --group-color '#1a2B3c'
 r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ "$(field tab)" = '"iterm2:ABC-123"' ] && r=0
 check 'TERM_PROGRAM=iTerm.app detects iterm2 and runs the helper' $r
@@ -574,19 +619,19 @@ check 'launcher.py passes --group and --group-color to the helper' \
   $(grep -sq '|--group|grp|' "$STUB_DIR/uv.log" && grep -sq '|--group-color|#1a2B3c|' "$STUB_DIR/uv.log"; echo $?)
 check 'launcher.py passes the session name to the helper' $(grep -sq '|--name|it1|' "$STUB_DIR/uv.log"; echo $?)
 check 'tab_group is the group the helper reports' $([ "$(field tab_group)" = '"grp"' ]; echo $?)
-check 'the helper gets the cd command' $(grep -sqF "|cd $CO/.claude/worktrees/it1 && exec claude " "$STUB_DIR/uv.log"; echo $?)
-reset_stub
+check 'the launch file holds the cd command' $(grep -sqF "cd $CO/.claude/worktrees/it1 && exec claude " "$(launch_file)"; echo $?)
+reset_stub; auto_tab
 ITERM_SESSION_ID=w0t1p0:ORCH-UUID run start --name it2 --model m --principal p --checkout "$CO"
 r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ "$(field tab_group)" = null ] \
   && grep -sq '|--session|ORCH-UUID|' "$STUB_DIR/uv.log" && ! grep -sq -- '--group' "$STUB_DIR/uv.log" && r=0
 check 'ITERM_SESSION_ID detects iterm2; no --group gives tab_group null; the window is the orchestrator session' $r
-reset_stub
+reset_stub; auto_tab
 TMUX=/tmp/t,1,0 run start --name it3 --model m --principal p --checkout "$CO" --terminal iterm2
 r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
 check '--terminal iterm2 wins over TMUX' $r
 
 # The helper fails: the osascript fallback opens the tab, with no group.
-reset_stub
+reset_stub; auto_tab
 : > "$STUB_DIR/uv-fail"
 TERM_PROGRAM=iTerm.app run start --name it4 --model m --principal p --checkout "$CO" --group grp
 r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqi 'no tab group' "$T/err" \
@@ -614,7 +659,7 @@ check 'a failed helper and a failed osascript exit 6 and name the kept worktree'
 
 # -- iterm2: a helper that fails part way (one tab, never two) -------------
 # helper_says <exit code> <stdout line>...: the next helper stdout and exit.
-helper_says() { reset_stub; echo "$1" > "$STUB_DIR/uv-rc"; shift; printf '%s\n' "$@" > "$STUB_DIR/uv-out"; }
+helper_says() { reset_stub; auto_tab; echo "$1" > "$STUB_DIR/uv-rc"; shift; printf '%s\n' "$@" > "$STUB_DIR/uv-out"; }
 osa_starts() { grep -c '^-|start|' "$STUB_DIR/osa.log" 2>/dev/null | tr -d ' '; }
 
 helper_says 1 '{"opened": "T-1"}' '{"closed": "T-1"}'
@@ -674,7 +719,7 @@ chmod +x "$T/bin/claude"
 check 'a command that cannot run gives exit 127 and a line, not a traceback' $r
 
 # A helper that hangs: the launcher kills the helper's whole process group.
-reset_stub
+reset_stub; auto_tab
 : > "$STUB_DIR/uv-hang"
 r=1; python3 - "$here" "$CO" > "$T/out" 2> "$T/err" <<'PY' && r=0
 import sys, time
@@ -703,6 +748,154 @@ ok = "--deadline" in a and 0 < int(a[a.index("--deadline") + 1]) < launcher.HELP
 sys.exit(0 if ok else 1)
 PY
 check 'launcher.py gives the helper a --deadline shorter than HELPER_TIMEOUT' $r
+
+# -- iterm2: the typed line and the process check (issue 192) ---------------
+LONGP=$(python3 -c 'print("x" * 1500)')
+# typed_ok: the typed line plus its newline is at most 1024 bytes; it sources
+# a 0600 file that removes itself and then holds the full command.
+typed_ok() {
+  python3 - "$(typed_line)" "$(launch_file)" "$1" <<'PY'
+import os, stat, sys
+typed, path, worktree = sys.argv[1:4]
+assert len((typed + "\n").encode("utf-8")) <= 1024, len(typed)
+assert typed.startswith(" . '/tmp/crew-launch-") and typed.endswith(".sh'"), typed
+assert path and typed == " . '%s'" % path, (typed, path)
+assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+lines = open(path).read().split("\n")
+assert lines[0] == "rm -f -- '%s'" % path, lines[0]
+assert lines[1].startswith("cd %s && exec claude " % worktree), lines[1]
+assert "x" * 1500 in lines[1] and len(lines[1]) > 1024
+PY
+}
+
+reset_stub; auto_tab
+TERM_PROGRAM=iTerm.app run start --name lg1 --model m --principal "$LONGP" --checkout "$CO"
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 0 ] && typed_ok "$CO/.claude/worktrees/lg1" && r=0
+check 'a command over 1024 bytes: the helper types a short line that sources a 0600 file with the full command' $r
+# The typed line, run in a shell with a harmless claude: the file is gone when
+# claude runs, and claude gets the arguments and the cwd.
+mkdir -p "$T/runbin"
+cat > "$T/runbin/claude" <<'STUB'
+#!/bin/bash
+{ printf 'pwd=%s\n' "$(pwd -P)"; printf 'argc=%s\n' "$#"; for a in "$@"; do printf 'arg=%s\n' "${a:0:40}"; done
+  [ -e "$LAUNCH_FILE" ] && echo file=there || echo file=gone; } > "$RAN_OUT"
+STUB
+chmod +x "$T/runbin/claude"
+lf=$(launch_file)
+LAUNCH_FILE=$lf RAN_OUT="$T/ran" PATH="$T/runbin:$PATH" bash --noprofile --norc -c "$(typed_line)"
+r=1; grep -qx 'file=gone' "$T/ran" && grep -qx "pwd=$CO/.claude/worktrees/lg1" "$T/ran" && grep -qx 'arg=--name' "$T/ran" \
+  && grep -qx 'arg=lg1' "$T/ran" && grep -qx 'arg=--model' "$T/ran" && grep -qx 'arg=--session-id' "$T/ran" \
+  && grep -qx 'argc=9' "$T/ran" && [ ! -e "$lf" ] && r=0
+check 'the typed line, run in a shell: the file is gone before claude runs, with its arguments and the worktree cwd' $r
+
+reset_stub; auto_tab
+: > "$STUB_DIR/uv-fail"
+TERM_PROGRAM=iTerm.app run start --name lg2 --model m --principal "$LONGP" --checkout "$CO"
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|start|' "$STUB_DIR/osa.log" && typed_ok "$CO/.claude/worktrees/lg2" && r=0
+check 'a command over 1024 bytes: the osascript fallback types the same short line' $r
+
+# The check fails: exit 10, one stderr line, the tab closes, the worktree and no file stay.
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"
+TERM_PROGRAM=iTerm.app run start --name nc1 --model m --principal p --checkout "$CO"
+lf=$(launch_file)
+r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:ABC-123' "$T/err" && grep -sqF 'ttysAUTO' "$T/err" \
+  && grep -sqE '(^|[^0-9.])1 s' "$T/err" && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" \
+  && [ -d "$CO/.claude/worktrees/nc1" ] && [ ! -s "$T/out" ] && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
+check 'no claude on the tab tty: exit 10, one line with the tab, the tty and the wait, the tab closed, the file removed, the worktree kept' $r
+
+# The fallback warning joins the one line.
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"; : > "$STUB_DIR/uv-fail"
+TERM_PROGRAM=iTerm.app run start --name nc2 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'OSA-0001' "$T/err" && grep -sqi 'osascript' "$T/err" \
+  && grep -sq '^-|stop|OSA-0001|$' "$STUB_DIR/osa.log" && r=0
+check 'exit 10 after the osascript fallback still prints exactly one stderr line' $r
+
+# A failed ps read after the tab opened: exit 6, the tab closes, the file is removed.
+reset_stub; auto_tab; : > "$STUB_DIR/ps-fail"
+TERM_PROGRAM=iTerm.app run start --name nc3 --model m --principal p --checkout "$CO"
+lf=$(launch_file)
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
+check 'a failed ps read: exit 6, the tab closed, the launch file removed' $r
+
+# No tty row for the tab: exit 6, never a pass.
+reset_stub; auto_tab; : > "$STUB_DIR/osa-ttys-manual"
+TERM_PROGRAM=iTerm.app run start --name nc4 --model m --principal p --checkout "$CO"
+lf=$(launch_file)
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
+check 'no tty for the tab: exit 6, the tab closed, the launch file removed' $r
+
+# A failed terminal step after the file is written: the file is removed.
+reset_stub; : > "$STUB_DIR/uv-fail"; : > "$STUB_DIR/osa-fail"
+TERM_PROGRAM=iTerm.app run start --name nc5 --model m --principal p --checkout "$CO"
+lf=$(launch_file)
+r=1; [ "$rc" = 6 ] && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
+check 'a helper and osascript that both fail: exit 6 and the launch file is removed' $r
+
+# The wait variable: a bad value is exit 2, before any worktree or tab.
+for v in 0 abc -1 '' '1e3' ' 5' '0.0' '1.'; do
+  reset_stub; auto_tab
+  b=$(wtcount)
+  CREW_LAUNCHER_START_WAIT="$v" TERM_PROGRAM=iTerm.app run start --name bw1 --model m --principal p --checkout "$CO"
+  r=1; [ "$rc" = 2 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq CREW_LAUNCHER_START_WAIT "$T/err" && [ "$(wtcount)" = "$b" ] \
+    && [ ! -e "$STUB_DIR/uv.log" ] && [ ! -e "$STUB_DIR/osa.log" ] && [ ! -s "$T/out" ] && r=0
+  check "CREW_LAUNCHER_START_WAIT='$v' exits 2 and opens no tab" $r
+done
+reset_stub; auto_tab
+CREW_LAUNCHER_START_WAIT=0 TERM_PROGRAM=iTerm.app run resume --name bw2 --worktree "$T/nowhere" --session-id s-1
+check 'a bad wait on resume exits 2 and opens no tab' $([ "$rc" = 2 ] && grep -sq CREW_LAUNCHER_START_WAIT "$T/err" && [ ! -e "$STUB_DIR/uv.log" ] && [ ! -e "$STUB_DIR/osa.log" ]; echo $?)
+CREW_LAUNCHER_START_WAIT=abc TERM_PROGRAM=iTerm.app run window --name bw3 --cwd "$T" --prompt-file "$T/list.json"
+check 'a bad wait on window exits 2 and opens no tab' $([ "$rc" = 2 ] && grep -sq CREW_LAUNCHER_START_WAIT "$T/err" && [ ! -e "$STUB_DIR/uv.log" ] && [ ! -e "$STUB_DIR/osa.log" ]; echo $?)
+reset_stub; auto_tab
+CREW_LAUNCHER_START_WAIT=abc TMUX=/tmp/t,1,0 run start --name bw4 --model m --principal p --checkout "$CO"
+check 'the wait variable does not apply on tmux' $([ "$rc" = 0 ]; echo $?)
+reset_stub; auto_tab
+CREW_LAUNCHER_START_WAIT=0.5 TERM_PROGRAM=iTerm.app run start --name bw5 --model m --principal p --checkout "$CO"
+check 'a decimal wait is valid' $([ "$rc" = 0 ]; echo $?)
+
+# A window and a resume whose claude never starts: exit 10, one line, the tab closes.
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"
+TERM_PROGRAM=iTerm.app run window --name nw1 --cwd "$T" --prompt-file "$T/list.json"
+lf=$(launch_file)
+r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" && [ ! -e "$lf" ] && r=0
+check 'window: no claude on the tab tty exits 10 and closes the tab' $r
+
+# The line over 1024 bytes: exit 6 before any tab opens (a directory of apostrophes).
+reset_stub; auto_tab
+r=1; python3 - "$here" "$CO" "$T" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+d = os.path.join(sys.argv[3], "'" * 300)
+os.makedirs(d)
+launcher.LAUNCH_DIR = d
+rc = launcher.main(["start", "--name", "ln1", "--principal", "p", "--checkout", sys.argv[2], "--terminal", "iterm2"])
+left = os.listdir(d)
+sys.exit(0 if rc == 6 and not left else 1)
+PY
+check 'a typed line over 1024 bytes exits 6 before a tab opens, and the file is removed' \
+  $([ "$r" = 0 ] && [ ! -e "$STUB_DIR/uv.log" ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+
+# Every probe of the wait has a timeout; the close has a short one of its own.
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"
+r=1; python3 - "$here" "$CO" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+seen = []
+real = launcher.run
+def run(cmd, **kw):
+    if cmd[0] in ("ps", "osascript"):
+        seen.append((cmd[0], cmd[2] if cmd[0] == "osascript" else "", kw.get("timeout")))
+    return real(cmd, **kw)
+launcher.run = run
+rc = launcher.main(["start", "--name", "to1", "--principal", "p", "--checkout", sys.argv[2], "--terminal", "iterm2"])
+probes = [s for s in seen if s[0] == "ps" or s[1] == "ttys"]
+closes = [s for s in seen if s[1] == "stop"]
+ok = rc == 10 and probes and all(t is not None and t <= 60 for _, _, t in probes)
+ok = ok and len(closes) == 1 and closes[0][2] is not None and closes[0][2] <= 15
+sys.exit(0 if ok else 1)
+PY
+check 'each ps and ttys probe of the wait has a timeout, and the tab close has a short one' $r
 
 # -- iterm2-tabs.py itself, against a fake iterm2 module -------------------
 mkdir -p "$T/fake"
@@ -1370,10 +1563,12 @@ TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT" --session-id given-1 --
 settings_is 'resume merges --settings with remoteControlAtStartup false' '{"a": 1, "remoteControlAtStartup": false}'
 check 'resume --session-id wins over the transcript; --repo sets repo' \
   $([ "$(field session_id)" = '"given-1"' ] && [ "$(field repo)" = '"o/r"' ] && grep -sq -- '--resume given-1 ' "$STUB_DIR/tmux-cmd"; echo $?)
-reset_stub
+reset_stub; auto_tab
 TERM_PROGRAM=iTerm.app run resume --name rs-1 --worktree "$RWT"
-check 'resume on iTerm2 gives the helper the --resume command' \
-  $([ "$rc" = 0 ] && grep -sqF "|cd $RWT && exec claude --resume new-2222 --name rs-1 " "$STUB_DIR/uv.log"; echo $?)
+check 'resume on iTerm2 writes the --resume command to the launch file' \
+  $([ "$rc" = 0 ] && grep -sqF "cd $RWT && exec claude --resume new-2222 --name rs-1 " "$(launch_file)"; echo $?)
+check 'resume on iTerm2 checks for a claude on the tab tty and exits 0' \
+  $([ "$rc" = 0 ] && grep -sq '^-|ttys|' "$STUB_DIR/osa.log"; echo $?)
 reset_stub
 CLAUDE_CONFIG_DIR="$T/empty-cc" TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
 check 'resume with no transcript exits 5 with one line and opens no tab' \
@@ -2714,7 +2909,7 @@ settings_is 'window --settings reads and merges a file path value' \
   '{"permissions": {"allow": ["Bash(ls)"]}, "remoteControlAtStartup": false}'
 
 # window on iTerm2 (the helper stub, then the osascript stub for stop).
-reset_stub
+reset_stub; auto_tab
 : > "$T/git.log"
 wbase=$(wtcount)
 TERM_PROGRAM=iTerm.app run window --name rec-w3 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --model sonnet --group grp
@@ -2723,7 +2918,8 @@ check 'window on iterm2 exits 0 with terminal iterm2, tab iterm2:<id>, and no wo
 check 'window on iterm2 cuts no worktree and no branch' $([ "$(wtcount)" = "$wbase" ] && ! grep -sq 'worktree|add' "$T/git.log"; echo $?)
 check 'window on iterm2 passes the name to the helper' $(grep -sq '|--name|rec-w3|' "$STUB_DIR/uv.log"; echo $?)
 check 'window on iterm2 passes the cwd, the name, the model and the prompt file in the helper command' \
-  $(grep -sqF "|cd $WINDIR && exec claude " "$STUB_DIR/uv.log" && grep -sqF -- '--model sonnet' "$STUB_DIR/uv.log" && grep -sqF -- '--name rec-w3' "$STUB_DIR/uv.log" && grep -sqF -- "$T/win-prompt.md" "$STUB_DIR/uv.log"; echo $?)
+  $(f=$(launch_file); grep -sqF "cd $WINDIR && exec claude " "$f" && grep -sqF -- '--model sonnet' "$f" && grep -sqF -- '--name rec-w3' "$f" && grep -sqF -- "$T/win-prompt.md" "$f"; echo $?)
+check 'window on iterm2 checks for a claude on the tab tty and exits 0' $(grep -sq '^-|ttys|' "$STUB_DIR/osa.log"; echo $?)
 echo 'ABC-123' > "$STUB_DIR/osa-sessions"
 run stop iterm2:ABC-123
 check 'stop on the tab handle of window (iterm2) addresses the id' $([ "$rc" = 0 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log"; echo $?)

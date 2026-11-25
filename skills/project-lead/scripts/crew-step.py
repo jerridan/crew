@@ -9,6 +9,8 @@ usage:
   crew-step.py hand-over <record-dir> <deliverable-id> --body <file> --title <t>
   crew-step.py hand-over <record-dir> <deliverable-id> --local
   crew-step.py cleanup <record-dir> <deliverable-id>
+  crew-step.py park <record-dir> --reason usage|pause|question --next "<text>" [--until <epoch>] [--by <name>] [--delay <seconds>]
+  crew-step.py unpark <record-dir> [--by "<text>"]
 
 `skills/project-lead/references/crew-step.md` owns what each subcommand and
 flag does, and when the project lead runs it.
@@ -18,8 +20,10 @@ evidence markers and the exit codes.
 
 Record writes. Every write to the record's state goes through
 `crew-record.py`, which runs from this script's own directory, as `spend.py`
-does. `crew-orch.py` runs from `../../orchestrator/scripts/`. This script
-writes one file itself: `worktrees.json`. It decides nothing that the project
+does. `crew-orch.py`, `launcher.py` and `crew-usage.py` run from
+`../../orchestrator/scripts/`. This script writes one record file itself:
+`worktrees.json`. A park writes its prompt file and its log in
+`<record-dir>/park/`. It decides nothing that the project
 lead judges: it reads no PR body, writes no decision on a diff, and
 escalates nothing.
 
@@ -33,11 +37,19 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RECORD = os.path.join(HERE, "crew-record.py")
 SPEND = os.path.join(HERE, "spend.py")
 ORCH = os.path.normpath(os.path.join(HERE, "..", "..", "orchestrator", "scripts", "crew-orch.py"))
+ORCH_SCRIPTS = os.path.normpath(os.path.join(HERE, "..", "..", "orchestrator", "scripts"))
+LAUNCHER = os.path.join(ORCH_SCRIPTS, "launcher.py")
+USAGE = os.path.join(ORCH_SCRIPTS, "crew-usage.py")
+PARK_MD = os.path.normpath(os.path.join(HERE, "..", "references", "park.md"))
+PARK_REASONS = ("usage", "pause", "question")
+PARK_DELAY = 20
+NO_MATCH = 3
 WINDOW_WATCH = os.path.normpath(os.path.join(HERE, "..", "..", "delivered-window", "scripts", "window-watch.py"))
 NO_REMOTE = "launch check 3 (trigger 6): no remote"
 TAIL = 40
@@ -925,6 +937,320 @@ def cleanup(out, rec, did):
                 step="restore")
 
 
+# --- park and unpark --------------------------------------------------------
+
+def utc_now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def record_root():
+    """The record root, by the rule of crew-orch.py's record_root()."""
+    env = os.environ.get("CREW_RECORD_ROOT")
+    return os.path.expanduser(env) if env else os.path.join(os.path.expanduser("~"), ".claude", "crew")
+
+
+def launch_identity(run_state):
+    """The launch values of the session that parks, or a refusal.
+
+    Return (identity, None) or (None, why). The identity holds name, handle,
+    terminal, group, model and worktree. Today the one source is the
+    orchestrator item's `launch`. A later source goes here, and nowhere else.
+    """
+    orch = run_state.get("orchestrator")
+    if not isinstance(orch, dict) or not orch.get("name"):
+        return None, "no orchestrator: a park needs run.orchestrator"
+    path = os.path.join(record_root(), "orchestrators", str(orch.get("name")), "orchestrator.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError) as exc:
+        return None, "the orchestrator record %s cannot be read: %s" % (path, exc)
+    item = (data.get("items") or {}).get(str(orch.get("item")))
+    launch = (item or {}).get("launch") or {}
+    if not launch:
+        return None, "the orchestrator item %s has no launch" % orch.get("item")
+    if not launch.get("tab"):
+        return None, "the orchestrator item %s has no launch.tab" % orch.get("item")
+    if not launch.get("session_name"):
+        return None, "the orchestrator item %s has no launch.session_name" % orch.get("item")
+    return {"name": launch.get("session_name"), "handle": launch.get("tab"), "terminal": launch.get("terminal"),
+            "group": launch.get("tab_group"), "model": launch.get("model"),
+            "worktree": launch.get("worktree")}, None
+
+
+def park_conditions(at, from_session):
+    """The --if pairs that hold only while run.park is this park."""
+    return ["--if", "park.at=" + json.dumps(at), "--if", "park.from_session=" + json.dumps(from_session)]
+
+
+def orch_set(orch, key, value):
+    return run([sys.executable, ORCH, "--orch", str(orch.get("name")), "item", str(orch.get("item")),
+                "set", key, json.dumps(value)])
+
+
+def cmd_park(argv):
+    positional, opts = parse(argv, ("--reason", "--next", "--until", "--by", "--delay"), ())
+    rec, = want(positional, 1, 'park <record-dir> --reason usage|pause|question --next "<text>" '
+                               "[--until <epoch>] [--by <name>] [--delay <seconds>]")
+    reason = opts.get("--reason")
+    if reason not in PARK_REASONS:
+        raise Usage("--reason must be one of %s" % ", ".join(PARK_REASONS))
+    if not (opts.get("--next") or "").strip():
+        raise Usage("park needs --next with the next step")
+    if reason == "pause" and not (opts.get("--by") or "").strip():
+        raise Usage("--reason pause needs --by with the principal's name")
+    if reason != "pause" and "--by" in opts:
+        raise Usage("--by goes with --reason pause only")
+    until = None
+    if "--until" in opts:
+        try:
+            until = int(opts["--until"])
+        except ValueError:
+            raise Usage("--until must be epoch seconds")
+    delay = PARK_DELAY
+    if "--delay" in opts:
+        try:
+            delay = float(opts["--delay"])
+        except ValueError:
+            raise Usage("--delay must be a number of seconds")
+        if delay < 0:
+            raise Usage("--delay must not be negative")
+    by = {"usage": "usage", "question": "project-lead"}.get(reason) or opts["--by"]
+
+    out = Out()
+    if not os.path.isfile(os.path.join(rec, "state.json")):
+        out.fail("park", "no record at %s: state.json is missing" % rec)
+        return out.finish()
+    state = load_state(rec)
+    run_state = state.get("run", {})
+    if isinstance(run_state.get("park"), dict):
+        out.fail("park", "a park is already set, from %s" % run_state["park"].get("at"))
+        return out.finish()
+    identity, why = launch_identity(run_state)
+    if why:
+        out.fail("park", why)
+        return out.finish()
+    repo = run_state.get("repo") or ""
+    if not identity.get("worktree") or real(repo) != real(identity["worktree"]):
+        out.fail("park", "run.repo %s differs from the item's launch.worktree %s" % (repo, identity.get("worktree")))
+        return out.finish()
+    checkout = run_state.get("checkout") or repo
+    status = git(checkout, "status", "--porcelain")
+    if status.returncode != 0:
+        out.fail("park", "git status in %s: %s" % (checkout, err(status)))
+        return out.finish()
+    dirty = [line for line in status.stdout.splitlines() if line.strip()]
+    if dirty:
+        out.fail("park", "dirty tree in %s: %d paths; commit first" % (checkout, len(dirty)))
+        return out.finish()
+
+    rec = os.path.abspath(rec)
+    park_dir = os.path.join(rec, "park")
+    number = len(run_state.get("parks") or []) + 1
+    park = {"reason": reason, "by": by, "at": utc_now(), "until": until, "next": opts["--next"],
+            "from_session": session_id(run_state), "prompt": os.path.join(park_dir, "prompt-%d.md" % number),
+            "waiter": None}
+    if not record_step(out, rec, "run set park", ["run", "set", "park", json.dumps(park)]):
+        return out.finish()
+    inputs = {"rec": rec, "park": park, "identity": identity, "repo": repo, "delay": delay,
+              "orchestrator": run_state.get("orchestrator"), "slug": state.get("goal_slug") or os.path.basename(rec)}
+    try:
+        os.makedirs(park_dir, exist_ok=True)
+        with open(os.path.join(park_dir, "park.log"), "a", encoding="utf-8") as park_log:
+            # A new session: the end of this Bash call and of the claude session
+            # that parks sends the helper no signal.
+            helper = subprocess.Popen([sys.executable, os.path.abspath(__file__), "park-helper", json.dumps(inputs)],
+                                      stdin=subprocess.DEVNULL, stdout=park_log, stderr=subprocess.STDOUT,
+                                      start_new_session=True, close_fds=True)
+    except OSError as exc:
+        out.fail("helper", str(exc))
+        end_park(rec, park, {"step": "helper", "at": utc_now(), "error": str(exc)}, out.line)
+        return out.finish()
+    out.ok("helper", "started pid %d, log %s" % (helper.pid, os.path.join(park_dir, "park.log")))
+    return out.finish()
+
+
+def end_park(rec, park, failed, say):
+    """Move this park to run.parks with `failed`, and set run.park null. Only while it is this park."""
+    entry = dict(park, failed=failed)
+    conditions = park_conditions(park["at"], park["from_session"])
+    moved = record(rec, "run", "append", "parks", json.dumps(entry), *conditions)
+    if moved.returncode == NO_MATCH:
+        say("%s ok rollback: the park is already gone" % utc_now())
+        return
+    if moved.returncode != 0:
+        say("%s FAIL rollback: %s" % (utc_now(), err(moved)))
+        return
+    cleared = record(rec, "run", "set", "park", "null", *conditions)
+    if cleared.returncode != 0:
+        say("%s FAIL rollback: %s" % (utc_now(), err(cleared)))
+
+
+def cmd_park_helper(argv):
+    """The detached half of park. Its stdout is park/park.log: one line per step."""
+    inputs = json.loads(argv[0])
+    rec, park, identity = inputs["rec"], inputs["park"], inputs["identity"]
+    orch = inputs.get("orchestrator")
+
+    def say(text):
+        print(text, flush=True)
+
+    def log(kind, step, detail):
+        say("%s %s %s: %s" % (utc_now(), kind, step, detail))
+
+    def stop_waiter(waiter):
+        stopped = run([sys.executable, LAUNCHER, "stop", waiter["tab"], "--session-id", waiter["session_id"]])
+        if stopped.returncode == 0:
+            log("ok", "stop", "the waiter %s" % waiter["tab"])
+        else:
+            log("FAIL", "stop", "the waiter %s: %s" % (waiter["tab"], err(stopped)))
+
+    def fail(step, error, waiter=None):
+        log("FAIL", step, error)
+        if waiter:
+            stop_waiter(waiter)
+        end_park(rec, park, {"step": step, "at": utc_now(), "error": error}, say)
+
+    try:
+        park_prompt = park["prompt"]
+        try:
+            with open(park_prompt, "w", encoding="utf-8") as handle:
+                handle.write("Record directory: %s\nGoal slug: %s\n"
+                             "Read `%s`, section `## The waiter`, and follow it.\n" % (rec, inputs["slug"], PARK_MD))
+        except OSError as exc:
+            return fail("prompt", str(exc))
+        log("ok", "prompt", park_prompt)
+
+        settings = None
+        if orch:
+            got = run([sys.executable, USAGE, "settings", "--cwd", inputs["repo"]])
+            if got.returncode != 0 or not got.stdout.strip():
+                return fail("settings", err(got))
+            settings = got.stdout.strip().splitlines()[-1]
+            log("ok", "settings", "crew-usage.py settings")
+
+        argv_window = [sys.executable, LAUNCHER, "window", "--name", identity["name"], "--cwd", inputs["repo"],
+                       "--prompt-file", park_prompt]
+        for flag, value in (("--model", identity.get("model")), ("--group", identity.get("group")),
+                            ("--terminal", identity.get("terminal")), ("--settings", settings)):
+            if value:
+                argv_window += [flag, value]
+        started = run(argv_window)
+        try:
+            shown = json.loads(started.stdout.strip().splitlines()[-1]) if started.returncode == 0 else None
+        except (ValueError, IndexError):
+            shown = None
+        if not isinstance(shown, dict) or not shown.get("tab") or not shown.get("session_id"):
+            return fail("window", err(started) if started.returncode != 0 else "no JSON line from window")
+        waiter = {"name": shown.get("session_name"), "session_id": shown["session_id"], "tab": shown["tab"],
+                  "terminal": shown.get("terminal"), "tab_group": shown.get("tab_group"),
+                  "model": shown.get("model"), "started_at": utc_now()}
+        log("ok", "window", "%s %s" % (waiter["tab"], waiter["session_id"]))
+
+        woke_early = False
+        if os.environ.get("CREW_PARK_TEST_FAIL") == "waiter":
+            return fail("record", "the test switch CREW_PARK_TEST_FAIL=waiter", waiter)
+        wrote = record(rec, "run", "set", "park.waiter", json.dumps(waiter),
+                       *park_conditions(park["at"], park["from_session"]))
+        if wrote.returncode == NO_MATCH:
+            # The park is gone: a wake came before this write. Who woke it?
+            parks = load_state(rec).get("run", {}).get("parks") or []
+            mine = [p for p in parks if isinstance(p, dict) and p.get("at") == park["at"]
+                    and p.get("from_session") == park["from_session"]]
+            woke = (mine[-1].get("woke") or {}) if mine else {}
+            if woke.get("session_id") != waiter["session_id"]:
+                log("ok", "record", "the park ended in session %s: no waiter write" % woke.get("session_id"))
+                stop_waiter(waiter)
+                return 0
+            woke_early = True
+            log("ok", "record", "the waiter woke already: no waiter write")
+        elif wrote.returncode != 0:
+            return fail("record", err(wrote), waiter)
+        else:
+            log("ok", "record", "run set park.waiter")
+
+        if orch:
+            for key in ("launch.tab", "launch.session_id"):
+                value = waiter["tab"] if key == "launch.tab" else waiter["session_id"]
+                done = orch_set(orch, key, value)
+                if done.returncode != 0:
+                    if woke_early:
+                        # The waiter runs the run now: stop neither session.
+                        log("FAIL", "orch", "%s: %s; the old session stays open" % (key, err(done)))
+                        return 0
+                    return fail("orch", "%s: %s" % (key, err(done)), waiter)
+                log("ok", "orch", "set %s" % key)
+
+        time.sleep(float(inputs.get("delay") or 0))
+        log("ok", "wait", "%s seconds" % inputs.get("delay"))
+        argv_stop = [sys.executable, LAUNCHER, "stop", identity["handle"], "--name", identity["name"]]
+        if park.get("from_session"):
+            argv_stop += ["--session-id", park["from_session"]]
+        stopped = run(argv_stop)
+        if stopped.returncode == 0:
+            log("ok", "stop", "the old session %s" % identity["handle"])
+        else:
+            log("FAIL", "stop", "the old session %s: %s" % (identity["handle"], err(stopped)))
+        return 0
+    finally:
+        say("%s end" % utc_now())
+
+
+def cmd_unpark(argv):
+    positional, opts = parse(argv, ("--by",), ())
+    rec, = want(positional, 1, 'unpark <record-dir> [--by "<text>"]')
+    out = Out()
+    if not os.path.isfile(os.path.join(rec, "state.json")):
+        out.fail("unpark", "no record at %s: state.json is missing" % rec)
+        return out.finish()
+    run_state = load_state(rec).get("run", {})
+    park = run_state.get("park")
+    if not isinstance(park, dict):
+        out.ok("unpark", "no park")
+        return out.finish()
+    caller = session_id(run_state)
+    conditions = park_conditions(park.get("at"), park.get("from_session"))
+    entry = dict(park, woke={"at": utc_now(), "by": opts.get("--by"), "session_id": caller})
+    held = [p for p in run_state.get("parks") or [] if isinstance(p, dict) and p.get("at") == park.get("at")
+            and p.get("from_session") == park.get("from_session")]
+    if held:
+        out.ok("record", "run.parks already holds this park")
+    elif not record_step(out, rec, "run append parks", ["run", "append", "parks", json.dumps(entry)] + conditions):
+        return out.finish()
+    if not record_step(out, rec, "run set park null", ["run", "set", "park", "null"] + conditions):
+        return out.finish()
+
+    waiter = park.get("waiter")
+    is_waiter = isinstance(waiter, dict) and waiter.get("session_id") == caller
+    if not isinstance(waiter, dict):
+        out.ok("stop", "skipped, no waiter")
+    elif is_waiter:
+        out.ok("stop", "skipped, the waiter is this session")
+    elif not waiter.get("tab") or not waiter.get("session_id"):
+        out.ok("stop", "skipped, the waiter has no tab")
+    else:
+        stopped = run([sys.executable, LAUNCHER, "stop", waiter["tab"], "--session-id", waiter["session_id"]])
+        if stopped.returncode == 0:
+            out.ok("stop", "the waiter %s" % waiter["tab"])
+        else:
+            out.fail("stop", "the waiter %s: %s" % (waiter["tab"], err(stopped)))
+
+    orch = run_state.get("orchestrator")
+    if not orch:
+        out.ok("orch", "skipped, no orchestrator")
+    elif is_waiter:
+        out.ok("orch", "skipped, the waiter is this session")
+    else:
+        for key, value in (("launch.session_id", caller), ("launch.tab", None)):
+            done = orch_set(orch, key, value)
+            if done.returncode == 0:
+                out.ok("orch", "set %s" % key)
+            else:
+                out.fail("orch", "%s: %s" % (key, err(done)))
+    out.ok("unpark", "run.park moved to run.parks")
+    return out.finish()
+
+
 # --- main -------------------------------------------------------------------
 
 COMMANDS = {
@@ -933,6 +1259,9 @@ COMMANDS = {
     "verify": cmd_verify,
     "hand-over": cmd_hand_over,
     "cleanup": cmd_cleanup,
+    "park": cmd_park,
+    "park-helper": cmd_park_helper,
+    "unpark": cmd_unpark,
 }
 
 

@@ -13,7 +13,9 @@ usage:
   crew-record.py <record-dir> package <id> set <field> <json>
   crew-record.py <record-dir> run state <state>
   crew-record.py <record-dir> run set <dotted.field> <json>
+  crew-record.py <record-dir> run set <dotted.field> <json> --if <dotted.field>=<json> [--if ...]
   crew-record.py <record-dir> run append <dotted.field> <json>
+  crew-record.py <record-dir> run append <dotted.field> <json> --if <dotted.field>=<json> [--if ...]
   crew-record.py <record-dir> run delete <dotted.field>
   crew-record.py <record-dir> run remove <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
@@ -71,6 +73,12 @@ and in the same atomic replace as `run set`, and each exits 2 and writes
 nothing when the path is missing, when the field is not a list (`append` and
 `remove`) or not under an object (`delete`), when `remove` finds no equal
 value, or when the JSON does not parse.
+`--if <dotted.field>=<json>` on `run set` or `run append` makes the write
+conditional, in the same lock: every `--if` field of `run` must equal its
+value, in value and in JSON type. A path that does not reach a field does
+not match. When one does not match, the call writes nothing and exits 3, a
+code no other failure uses. A `--if` with no `=`, bad JSON or on another
+command exits 2.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes. `escalation <index> set` writes one
@@ -237,6 +245,48 @@ def remove_dotted(run: dict, dotted: str, value) -> None:
             del items[i]
             return
     die(f"{dotted} has no value {json.dumps(value)}")
+
+
+# The exit code of a `--if` that does not hold. No other failure uses it.
+NO_MATCH = 3
+
+
+def take_conditions(rest: list[str]) -> tuple[list[str], list[tuple[str, object]]]:
+    """Split the `--if <dotted.field>=<json>` pairs from the other arguments."""
+    others, conditions = [], []
+    i = 0
+    while i < len(rest):
+        if rest[i] != "--if":
+            others.append(rest[i])
+            i += 1
+            continue
+        if i + 1 >= len(rest):
+            die("--if needs a value")
+        field, sep, text = rest[i + 1].partition("=")
+        if not sep or not field:
+            die(f"--if {rest[i + 1]} is not <dotted.field>=<json>")
+        conditions.append((field, parse_json(text)))
+        i += 2
+    return others, conditions
+
+
+def check_conditions(run: dict, conditions: list[tuple[str, object]]) -> None:
+    """Exit NO_MATCH and write nothing unless every field equals its value.
+
+    The match checks the JSON type too, as `run remove` does. A path that does
+    not reach a field is no match.
+    """
+    for field, value in conditions:
+        target = run
+        found = True
+        for key in field.split("."):
+            if not isinstance(target, dict) or key not in target:
+                found = False
+                break
+            target = target[key]
+        if not found or json.dumps(target, sort_keys=True) != json.dumps(value, sort_keys=True):
+            print(f"--if {field}={json.dumps(value)} does not hold: nothing written", file=sys.stderr)
+            sys.exit(NO_MATCH)
 
 
 # `goal-check.md` owns the one-round rule: a goal run runs one goal check.
@@ -616,6 +666,11 @@ def main_locked(argv: list[str]) -> None:
                 usage()
     elif kind == "run":
         before = run.get("run_state")
+        rest, conditions = take_conditions(rest)
+        if conditions:
+            if arg(rest, 0) not in ("set", "append"):
+                die("--if goes with run set and run append only")
+            check_conditions(run, conditions)
         if arg(rest, 0) == "state":
             run["run_state"] = arg(rest, 1)
             stamp_on_transition(run, before)

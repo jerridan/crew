@@ -10548,7 +10548,7 @@ Deliberately different:
       `window` and the `watch` step. No crew run has used a window session,
       and no real session measured the token figure.
 
-X. **`crew-record.py` changes one part of a list or an object — 2026-11-24.**
+164. **`crew-record.py` changes one part of a list or an object — 2026-11-25.**
    The item script-review found that `run set` only replaces a value. A script
    that adds one session id had to write the whole list, and a script that
    removes one result had to write the whole object. `run append` adds one

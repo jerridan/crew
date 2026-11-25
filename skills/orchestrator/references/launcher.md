@@ -242,9 +242,9 @@ worktree>` is the real worktree path with each character outside
 1. The worktree does not exist, or is not in a git work tree: exit 5.
 2. No `--session-id` and no transcript: exit 5.
 3. The base cannot be read: exit 5.
-4. `find` sees an open tab or pane for `--name`, for the session id or for
-   the worktree, in the terminal that `resume` chose: exit 8. The line names each handle. No tab opens. Focus that
-   tab, or stop it first.
+4. `find` sees an open tab or pane for `--name`, for the session id or for the
+   worktree, in the terminal that `resume` chose: exit 8. The line names each
+   handle. No tab opens. Focus that tab, or stop it first.
 
 **The tab.** The command that runs in the tab is:
 
@@ -324,8 +324,9 @@ launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
 `find` reads the tabs or panes of one terminal, chosen as "Terminals" says.
 Pass `--terminal` with the terminal that `start` used, so that a caller in
 another terminal finds the implementer. `find` prints one line for each open
-tab or pane that holds this implementer, and exits 0. With no such tab or pane, it prints no line. A tab
-or pane holds the implementer when a `claude` process on its tty has:
+tab or pane that holds this implementer, and exits 0. With no such tab or
+pane, it prints no line. A tab or pane holds the implementer when a `claude`
+process on its tty has:
 
 - the two arguments `--name <session-name>`, next to each other, or
 - with `--session-id`, the two arguments `--resume <id>` or `--session-id

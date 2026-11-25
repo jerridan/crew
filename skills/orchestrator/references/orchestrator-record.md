@@ -561,9 +561,10 @@ and prints `diff-file: <p>`. Exit 10 gives a failed `gh` call.
 
 ### `resume [--read-only]`
 
-Runs the mechanical steps of the resume of `resume-and-close.md`. It prints
-one line for each item, `<item> <action>: <detail>`, and the orchestrator does
-what the action says:
+Runs the mechanical steps of the resume of `resume-and-close.md`. Its
+`launcher.py find` call for each item carries `--terminal <launch.terminal>`
+when the item stores one. It prints one line for each item, `<item> <action>:
+<detail>`, and the orchestrator does what the action says:
 
 | Action | The detail says |
 |---|---|
@@ -571,7 +572,7 @@ what the action says:
 | `send-goal` | the implementer is alive, but `told` holds no goal. Send the goal |
 | `restart` | a session matches by id only. The line gives the `launcher.py stop` command. Then resume it |
 | `resume` | read-only only: the implementer is gone and its worktree exists. Run `resume` |
-| `notice` | a session matches by working directory only, or the worktree is gone, or a tool failed. `launcher.py find` gets `--terminal <launch.terminal>` when the item stores it. A failed `launcher.py find` prints `<item> notice: <error>; add a notice or run find`, and the command goes on to the next item. Add a notice. Never stop a session that matches by working directory only |
+| `notice` | a session matches by working directory only, or the worktree is gone, or a tool failed. A failed `launcher.py find` prints `<item> notice: <error>; add a notice or run find`, and the command goes on to the next item. Add a notice. Never stop a session that matches by working directory only |
 | `window` | the item is delivered. The command ran `window-watch.py ensure` (not with `--read-only`). Reach it with `send` |
 | `launch` | the item has no launch. Run `launch` |
 | `close` | the item is `shipped` or `closed`. The command ran `launcher.py find` and wrote a changed `launch.tab`. The line says `alive at <handle>`: run `close-item <item>`, then `--continue` after its answer. Or it says `its session is gone`: run `close-item <item> --continue` |

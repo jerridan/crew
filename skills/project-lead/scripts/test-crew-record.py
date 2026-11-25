@@ -53,9 +53,11 @@ def refused(label, *args):
 
 
 try:
-    rec("init", "goal", "goal-slug", "s1")
-    rec("run", "set", "results", '{"a": 1, "b": {"c": 2}}')
-    rec("run", "set", "name", '"text"')
+    for setup in (("init", "goal", "goal-slug", "s1"),
+                  ("run", "set", "results", '{"a": 1, "b": {"c": 2}}'),
+                  ("run", "set", "name", '"text"'),
+                  ("run", "set", "types", "[true, 1, 1.0, \"1\"]")):
+        check("setup " + " ".join(setup[:2]) + " exits 0", rec(*setup).returncode == 0)
 
     result = rec("run", "append", "session_ids", '"s2"')
     check("append adds a value", result.returncode == 0 and state()["run"]["session_ids"] == ["s1", "s2"])
@@ -91,6 +93,11 @@ try:
           result.returncode == 0 and state()["run"]["session_ids"] == ["s1", "s2", {"k": [1]}])
     rec("run", "remove", "session_ids", '{"k": [1]}')
     check("remove matches an object value", state()["run"]["session_ids"] == ["s1", "s2"])
+    rec("run", "remove", "types", "1")
+    check("remove 1 skips true", state()["run"]["types"] == [True, 1.0, "1"])
+    rec("run", "remove", "types", "true")
+    check("remove true skips numbers", state()["run"]["types"] == [1.0, "1"])
+    refused("remove "2" finds no value of any type", "run", "remove", "types", '"2"')
     refused("remove an absent value", "run", "remove", "session_ids", '"zz"')
     refused("remove from an object", "run", "remove", "results", "1")
     refused("remove from a missing field", "run", "remove", "nope", "1")

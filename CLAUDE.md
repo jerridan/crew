@@ -213,7 +213,7 @@ The orchestrator commands are built: `crew-orch.py` runs the merge, the word
 to an item, the launch, the close of an item, the digest of a PR and the
 resume in one call each, its poller `wait` takes the routine events with no
 model turn, and the `SessionStart` hook gives a restarted orchestrator its
-record (§15.NNN). Only the seeded tests have run them, and no orchestrator
+record (§15.166). Only the seeded tests have run them, and no orchestrator
 run has used them.
 
 Subagent items are built: the orchestrator runs an item that passes its test

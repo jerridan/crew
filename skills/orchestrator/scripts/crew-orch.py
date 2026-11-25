@@ -1596,6 +1596,12 @@ def close_stop_remove(rec: Record, item: dict, stop_processes: bool) -> None:
                 return
             print(f"stop: {last_line(out, 'done')}")
     if not worktree:
+        if sub and sub.get("branch"):
+            # A subagent branch with no recorded worktree: delete nothing, and tell the principal.
+            add_notice(rec, item_id, f"Subagent item {item_id} has the branch {sub['branch']} and no recorded "
+                                     f"worktree. Nothing was removed or deleted.")
+            print(f"remove: skipped (no worktree recorded); notice for branch {sub['branch']}")
+            return
         print("remove: skipped (no worktree recorded)")
         return
     argv = launcher + ["remove", worktree]

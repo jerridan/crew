@@ -41,6 +41,7 @@ agent is absolute: its cwd is not yours.
 | `simple-path.md` | the rest of the run for one package, and the light path for a small one | at "Size the work", and again when the shape is one package |
 | `full-path.md` | the rest of the run for more than one | when the shape is more than one |
 | `orchestrator-report.md` | what a project lead writes and calls when its goal carries an `Orchestrator:` line | when the goal carries that line |
+| `park.md` | the park: when you end your session at a long wait, the call, the waiter's rules and the wake | before you park, and when your first prompt names the waiter |
 | `resume.md` | the rules of `--resume`: the record it reopens, the work it re-enters, and the path it takes again | when the argument is `--resume` |
 
 ## Before anything

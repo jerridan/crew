@@ -50,6 +50,16 @@ command (`skills/orchestrator/SKILL.md`'s "Message discipline", rule 7). A
 window session sends its question by `SendMessage`, as above, and the answer
 comes by `say`.
 
+## A park
+
+A park (`park.md`) writes two fields of your item, through `crew-orch.py
+--orch <name> item <id> set`: `launch.tab` and `launch.session_id` of the
+waiter. The orchestrator reaches the waiter by the same session name, so its
+messages, its pause word and its resume word work as before. After a machine
+restart, `crew-orch.py resume` resumes the waiter's conversation from
+`launch.session_id`. A waiter answers a `rejoin` message in one line and stays
+parked.
+
 ## A new orchestrator name
 
 The person can rename the orchestrator session. The orchestrator then sends

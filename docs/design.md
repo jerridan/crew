@@ -10636,3 +10636,36 @@ Deliberately different:
       exit 6. The item already stores its terminal, so the flag costs nothing.
       `groups` takes the option for the same reason.
     - **Unexercised.** Only the seeded tests ran it.
+
+NNN. **A park ends the large session at a long wait — 2026-11-25,
+    `crew-step.py park` and `unpark`, `references/park.md`.** A project lead
+    that waits for the usage reset or for an answer keeps its whole build
+    context. After the prompt cache's time to live passes, the wake rewrites
+    that whole context at full price. The park ends the session and starts a
+    small waiter with the same name, directory and model. The waiter holds a
+    short prompt. The wake rewrites that prompt, and the resumed run reads the
+    record (`handover.md`, `run.park`).
+    - **The 30-minute threshold.** The prompt cache lives for a short time, and
+      a wait shorter than that costs less in place. A wait longer than 30
+      minutes pays the rewrite anyway, so the park removes the large rewrite.
+      A pause from the orchestrator parks at once, because its length is
+      unknown.
+    - **A park needs an orchestrator, for now.** A session that a person
+      started has no launch identity in a record, and its pane is the person's
+      only channel for an answer. That run waits in place. A park for it needs
+      a way to name the new pane to the person, and no such way exists. This is
+      the current limit. The decision is still with the principal, and a later
+      change can add a park for a hand-started run.
+    - **A failed park leaves the old session.** The helper stops the old
+      session only after the waiter and the orchestrator item hold the new
+      identity. A failure rolls back, and the old session keeps its wait.
+    - **Only a real wake ends a park.** A `rejoin` message after an
+      orchestrator restart and a failed `crew-usage.py wait` (exit 1) leave
+      the waiter parked.
+    - **Waits found and left out.** The plan review run, the goal check and
+      `crew-step.py verify` are short and in the foreground. A wait for a
+      working IC cannot park, because the IC dies with the session. Waits
+      after the hand-over belong to the window sessions. A `/crew:review` run
+      does not park.
+    - **Cost:** `Cost: <the project lead fills this at integration>`
+    - **Unexercised.** Only the seeded tests ran the park.

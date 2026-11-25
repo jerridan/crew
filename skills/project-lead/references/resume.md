@@ -13,6 +13,14 @@ re-run nothing already finished. With `worktrees.json`, `full-path.md`'s
 deliverable branch is the whole job. A resumed run writes no charter, no spec
 and no new branch, and creates no record directory.
 
+**A record whose `run.park` is set was parked** (`park.md`). The session
+runs `crew-step.py unpark` first, then reads `handover.md` and the last
+`run.parks` entry with the rest of the record, then re-enters as the rules
+below say. With `run.orchestrator` set, `unpark` also writes this session's id
+to the item's `launch.session_id` and sets `launch.tab` to `null`, when this
+session is not the waiter. A usage level still at `stopped`
+(`crew-usage.py check` exits 20) parks again, as `park.md` says.
+
 **A record whose `run_state` is already `complete` is closed.** Resume
 nothing, and say so in the closing message.
 

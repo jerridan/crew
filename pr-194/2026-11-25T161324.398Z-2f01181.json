@@ -1,0 +1,186 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 194,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/194"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "b774b0248af3bfd89980b8d4aecb6aea74836d7d",
+    "head": "2f01181d36b312a7243a5bc86d008dd9bd773478",
+    "started_at": "2026-11-25T16:13:24.398Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer\n\n## Summary\n\nThe orchestrator can start an implementer in a different terminal from its own, for example a tmux pane while the orchestrator runs in iTerm2. Before this change, the launcher's `find` and `groups` commands looked only in the caller's own terminal, so they did not see that implementer. As a result, the orchestrator's resume read a live implementer as gone, and could open a second tab for one conversation. Now `find` and `groups` take a `--terminal` option, and the orchestrator passes the terminal that it stored at the launch.\n\nCloses #193\n\n**Ticket:** [jerridan/crew#193](https://github.com/jerridan/crew/issues/193)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/launcher.md` owns the launcher's interface: \"Terminals\", `resume` check 4, `groups`, `find` and the exit codes.\n- `skills/orchestrator/references/orchestrator-record.md` owns `crew-orch.py resume`.\n- `skills/orchestrator/references/resume-and-close.md` owns the resume steps of an orchestrator.\n- The new finding in `docs/design.md` is under the placeholder `§15.NEXT`. The orchestrator assigns its number before the merge.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: `find` and `groups` take `--terminal iterm2|tmux|herdr` and pass it to `detect_terminal`, so rule 1 of \"Terminals\" applies. With no flag, the result does not change. The output formats and exit codes do not change.\n- `skills/orchestrator/scripts/crew-orch.py`: `find_handles` adds `--terminal <launch.terminal>` when the item stores a terminal.\n- `skills/orchestrator/scripts/test-launcher.sh`: iTerm2 caller with tmux implementer (`find`, and `find` with no flag as the old limit), tmux caller with iTerm2 implementer, `groups --terminal tmux` from iTerm2, `find --terminal herdr` from iTerm2, a bad `--terminal` value, and `resume --terminal tmux` from iTerm2 exits 8.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: an item with `launch.terminal: tmux` gets `--terminal tmux` on its `find` and resumes as `rejoin`. An item with no stored terminal gets no flag.\n- `skills/orchestrator/references/launcher.md`, `orchestrator-record.md`, `resume-and-close.md`: these files now agree with the code.\n- `docs/design.md`: the finding `§15.NEXT`.\n\n### Constraints that applied\n\n- The version is not bumped, because the orchestrator owns the `version` in both manifests.\n- The README is not changed, because it does not document `launcher.py` options.\n- issue-192 changes the same launcher files (the tab command and the start check). This PR changes only `find`, `groups` and `find_handles`, and adds a test for `resume` without a code change there.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 340 of 340 checks passed.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- The red commit failed the new `find` and `groups` checks before the code change. The checks for a bad `--terminal` value and for `resume` exit 8 passed already, because `resume` already gave its terminal to the match. They stay as regression tests.\n\n### Known gaps\n\n- Only the seeded tests ran the change. No orchestrator ran it against a real tmux pane or iTerm2 tab.\n\n### Decisions\n\n- **A `--terminal` option, not a scan of every terminal.** A scan needs a presence check for each terminal, and an absent iTerm2 makes the `osascript` listing fail with exit 6. The item already stores its terminal, so the option costs nothing.\n- **`groups` is in scope.** It has the same gap, and the orchestrator picks a group for `start --terminal <t>`.\n- **Light path.** One package, a runnable criterion and no open preference question.\n\n### Charter\n\nThe goal: `launcher.py find` sees an implementer in the terminal that its `launch` object names, whatever terminal the caller runs in. Each caller that depends on that match gets the same result: the open-tab check of `launcher.py resume`, and the resume of an orchestrator in `crew-orch.py`. The seeded tests cover it, and the references that own these interfaces agree with the code.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": null,
+      "review_url": null,
+      "author": null,
+      "error": "The review did not post: gh api repos/jerridan/crew/pulls/194/reviews failed with exit code 1: unexpected end of JSON input. The body-only retry failed too: gh api repos/jerridan/crew/pulls/194/reviews failed with exit code 1: unexpected end of JSON input",
+      "inline": [],
+      "in_body": [],
+      "check_run": null,
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 46,
+      "gather": 41,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

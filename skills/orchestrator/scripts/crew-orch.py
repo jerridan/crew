@@ -1795,7 +1795,14 @@ def resume_item(rec: Record, item: dict, read_only: bool) -> tuple:
             return f"{item_id} launch: not launched yet; run launch {item_id}", False
         return f"{item_id} ok: stage {stage}, no session recorded", False
     if stage in DONE_STAGES:
-        return f"{item_id} close: stage {stage}; run close-item {item_id} (--continue after its answer)", False
+        pairs = [p for p in find_handles(item) if p[1] in ("name", "id")]
+        if not pairs:
+            return (f"{item_id} close: stage {stage}; its session is gone; run close-item {item_id} --continue"), False
+        handle = pairs[0][0]
+        if handle != launch.get("tab") and not read_only:
+            rec.mutate(lambda st: st["items"][item_id]["launch"].__setitem__("tab", handle))
+        return (f"{item_id} close: stage {stage}; its session is alive at {handle}; "
+                f"run close-item {item_id} (--continue after its answer)"), False
     if is_delivered(rec, item_id) and stage in ("pr", "merged"):
         gdir = goal_record_dir(rec, item_id)
         if read_only or gdir is None:
@@ -1888,6 +1895,7 @@ def cmd_resume(rec: Record, args: list) -> None:
 
 DEFAULT_INTERVAL = 60.0
 INBOX_TEXT_CHARS = 80
+ROUTINE_FOR_IMPLEMENTER = {"check", "conflict", "comment", "review"}
 
 
 class Superseded(Exception):
@@ -2033,7 +2041,11 @@ def poll_prs(rec: Record, token: str) -> list:
                     found["wakes"].append(("review", "approved"))
                 if new.get("in_queue") != old.get("in_queue") and new.get("state") == "OPEN":
                     pos = new.get("queue_position")
-                    found["wakes"].append(("queue", f"in queue {pos}" if new.get("in_queue") else "left the queue"))
+                    if new.get("in_queue"):
+                        # An entry into the queue needs no decision: the board shows it.
+                        add_event(st, item_id, f"queue: in queue {pos}")
+                    else:
+                        found["wakes"].append(("queue", "left the queue"))
                 if new.get("state") == "CLOSED" and old.get("state") != "CLOSED":
                     found["closed"] = True
                 if (new.get("state") == "MERGED" and not it.get("words_sent")
@@ -2054,6 +2066,17 @@ def poll_prs(rec: Record, token: str) -> list:
                             found["wakes"].append(("comment", f"{r['author']} {r['text']}".strip()))
                 it["watch"] = {"reviews": [{k: r[k] for k in ("id", "author", "at")} for r in reviews],
                                "comments": [{k: r[k] for k in ("id", "author", "at")} for r in comments]}
+            # An implementer item has a project lead or a window session that handles its own
+            # PR. Its check, conflict, comment and review events are routine: the board shows
+            # them and nobody wakes. A subagent item, and an item in merge_queue, still wake.
+            if it.get("launch") and not it.get("subagent") and item_id not in st["merge_queue"]:
+                kept = []
+                for kind, text in found["wakes"]:
+                    if kind in ROUTINE_FOR_IMPLEMENTER and text != "approved":
+                        add_event(st, item_id, f"{kind}: {text}")
+                    else:
+                        kept.append((kind, text))
+                found["wakes"] = kept
 
         rec.mutate(change)
         wakes += [f"wake {kind} {item_id}: {text}" for kind, text in found["wakes"]]

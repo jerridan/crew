@@ -1,0 +1,1236 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 194,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/194"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "b774b0248af3bfd89980b8d4aecb6aea74836d7d",
+    "head": "2f01181d36b312a7243a5bc86d008dd9bd773478",
+    "started_at": "2026-11-25T16:21:48.046Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let launcher find and groups take --terminal, so a caller in another terminal finds the implementer\n\n## Summary\n\nThe orchestrator can start an implementer in a different terminal from its own, for example a tmux pane while the orchestrator runs in iTerm2. Before this change, the launcher's `find` and `groups` commands looked only in the caller's own terminal, so they did not see that implementer. As a result, the orchestrator's resume read a live implementer as gone, and could open a second tab for one conversation. Now `find` and `groups` take a `--terminal` option, and the orchestrator passes the terminal that it stored at the launch.\n\nCloses #193\n\n**Ticket:** [jerridan/crew#193](https://github.com/jerridan/crew/issues/193)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/launcher.md` owns the launcher's interface: \"Terminals\", `resume` check 4, `groups`, `find` and the exit codes.\n- `skills/orchestrator/references/orchestrator-record.md` owns `crew-orch.py resume`.\n- `skills/orchestrator/references/resume-and-close.md` owns the resume steps of an orchestrator.\n- The new finding in `docs/design.md` is under the placeholder `§15.NEXT`. The orchestrator assigns its number before the merge.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: `find` and `groups` take `--terminal iterm2|tmux|herdr` and pass it to `detect_terminal`, so rule 1 of \"Terminals\" applies. With no flag, the result does not change. The output formats and exit codes do not change.\n- `skills/orchestrator/scripts/crew-orch.py`: `find_handles` adds `--terminal <launch.terminal>` when the item stores a terminal.\n- `skills/orchestrator/scripts/test-launcher.sh`: iTerm2 caller with tmux implementer (`find`, and `find` with no flag as the old limit), tmux caller with iTerm2 implementer, `groups --terminal tmux` from iTerm2, `find --terminal herdr` from iTerm2, a bad `--terminal` value, and `resume --terminal tmux` from iTerm2 exits 8.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: an item with `launch.terminal: tmux` gets `--terminal tmux` on its `find` and resumes as `rejoin`. An item with no stored terminal gets no flag.\n- `skills/orchestrator/references/launcher.md`, `orchestrator-record.md`, `resume-and-close.md`: these files now agree with the code.\n- `docs/design.md`: the finding `§15.NEXT`.\n\n### Constraints that applied\n\n- The version is not bumped, because the orchestrator owns the `version` in both manifests.\n- The README is not changed, because it does not document `launcher.py` options.\n- issue-192 changes the same launcher files (the tab command and the start check). This PR changes only `find`, `groups` and `find_handles`, and adds a test for `resume` without a code change there.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 340 of 340 checks passed.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- The red commit failed the new `find` and `groups` checks before the code change. The checks for a bad `--terminal` value and for `resume` exit 8 passed already, because `resume` already gave its terminal to the match. They stay as regression tests.\n\n### Known gaps\n\n- Only the seeded tests ran the change. No orchestrator ran it against a real tmux pane or iTerm2 tab.\n\n### Decisions\n\n- **A `--terminal` option, not a scan of every terminal.** A scan needs a presence check for each terminal, and an absent iTerm2 makes the `osascript` listing fail with exit 6. The item already stores its terminal, so the option costs nothing.\n- **`groups` is in scope.** It has the same gap, and the orchestrator picks a group for `start --terminal <t>`.\n- **Light path.** One package, a runnable criterion and no open preference question.\n\n### Charter\n\nThe goal: `launcher.py find` sees an implementer in the terminal that its `launch` object names, whatever terminal the caller runs in. Each caller that depends on that match gets the same result: the open-tab check of `launcher.py resume`, and the resume of an orchestrator in `crew-orch.py`. The seeded tests cover it, and the references that own these interfaces agree with the code.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a --terminal option to the launcher's find and groups commands, and changes how crew-orch resume calls find, so the logic and the CLI interface both change.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: find(), groups(), parse() and detect_terminal(a.terminal)",
+        "skills/orchestrator/scripts/crew-orch.py: find_handles() passes launch.terminal",
+        "skills/orchestrator/scripts/test-launcher.sh: new find/groups --terminal tests",
+        "skills/orchestrator/scripts/test-crew-orch.sh: new issue 193 resume test"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "New --terminal argument for find and groups. detect_terminal now gets the flag value. Check that detect_terminal accepts an explicit value and that the exit codes are right."
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "find_handles adds --terminal when launch.terminal is stored. Check that a stored value the launcher rejects (a bad choice gives exit 2) does not break resume."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "New tests for find and groups --terminal and for resume --terminal. They depend on the stubs."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "New resume test: u1 stores a terminal and u2 does not."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New section header '§15.NEXT' that records the decision."
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Docs for the new option and the exit codes."
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Docs note on the find call in resume."
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "Docs note on the find call in resume."
+        }
+      ],
+      "summary": "`launcher.py find` and `groups` now take `--terminal iterm2|tmux|herdr`. With the flag they use that terminal in place of the one detected from the environment. `crew-orch.py resume` passes the terminal stored in `launch.terminal` to `find`, so it no longer reads a live tmux implementer as gone when the orchestrator runs in iTerm2. The change adds tests and updates the docs."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a --terminal option to the launcher's find and groups commands, and changes how crew-orch resume calls find, so the logic and the CLI interface both change.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/launcher.md",
+            "start_line": 685,
+            "end_line": 687,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The exit-code list says a bad `--terminal` value gives exit 2 for `find`, but the `groups` line does not say so, although `groups` now takes the same flag.",
+            "evidence": "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+            "suggested_fix": "Add to the `groups` line the same sentence that the `find` line has about a `--terminal` value that is not `iterm2`, `tmux` or `herdr`.",
+            "explanation": "`launcher.md` owns the launcher's interface, so it should describe both commands that gained the flag in the same way.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5708,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11068,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011183,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 418,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 20869,
+              "webSearchRequests": 0,
+              "costUSD": 0.17531999999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 99,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.17643829999999996
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 35044,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11068,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011183,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 16,
+              "outputTokens": 1911,
+              "cacheReadInputTokens": 180779,
+              "cacheCreationInputTokens": 32803,
+              "webSearchRequests": 0,
+              "costUSD": 0.3368638,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 364,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3379821
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7507,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11076,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011191,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 234,
+              "cacheReadInputTokens": 20787,
+              "cacheCreationInputTokens": 21057,
+              "webSearchRequests": 0,
+              "costUSD": 0.1773094,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 63,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1784285
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 3997,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 19503,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0019618,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 365,
+              "cacheReadInputTokens": 29610,
+              "cacheCreationInputTokens": 30161,
+              "webSearchRequests": 0,
+              "costUSD": 0.12726300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 173,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1292248
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2935,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11076,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011181000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 78,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 21071,
+              "webSearchRequests": 0,
+              "costUSD": 0.170136,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 24,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.17125410000000002
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+            "start_line": 2094,
+            "end_line": 2099,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The issue 193 test checks the argument list that the stub launcher received. The stub's `find` output comes from a file and does not depend on `--terminal`, so the \"reads as live\" check cannot show that the flag changes the result.",
+            "evidence": "grep -q '^find u1 .*--terminal tmux' \"$TMP/launcher.log\" || fail \"find of u1 has no --terminal tmux: $(cat \"$TMP/launcher.log\")\"",
+            "suggested_fix": "Make the stub `find` print a handle only when `--terminal tmux` is present, so the `rejoin` result depends on the flag.",
+            "explanation": "The `rejoin` result comes from the stub's canned output. Only the argument match shows the flag was passed, and the real `find` behaviour is covered only by test-launcher.sh.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 7232,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11064,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011179,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 801,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 18779,
+              "webSearchRequests": 0,
+              "costUSD": 0.08343590000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 400,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08455380000000001
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/launcher.md",
+          "start_line": 685,
+          "end_line": 687,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The exit-code list says a bad `--terminal` value gives exit 2 for `find`, but the `groups` line does not say so, although `groups` now takes the same flag.",
+          "evidence": "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+          "suggested_fix": "Add to the `groups` line the same sentence that the `find` line has about a `--terminal` value that is not `iterm2`, `tmux` or `herdr`.",
+          "explanation": "`launcher.md` owns the launcher's interface, so it should describe both commands that gained the flag in the same way.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,\n  `tmux` or `herdr`.",
+            "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer."
+          ],
+          "rationale": "The diff adds the bad `--terminal` note to the `find` line only, and `groups` gained the same flag, so the docs are uneven. The `groups` line already lists exit 2, so the gap is small.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,\n  `tmux` or `herdr`.",
+            "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+            "g.add_argument(\"--terminal\", choices=[\"iterm2\", \"tmux\", \"herdr\"])"
+          ],
+          "rationale": "The change adds the sentence about a bad `--terminal` value only to the `find` exit line. `groups` takes the same argparse `choices` flag, so it also exits 2 on a bad value, and the docs now describe the two commands differently. The impact is small: the exit-code table already says a bad argument exits 2, and the `start`, `window` and `resume` lines do not spell this out either.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,\n  `tmux` or `herdr`.",
+            "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+            "g.add_argument(\"--terminal\", choices=[\"iterm2\", \"tmux\", \"herdr\"])"
+          ],
+          "rationale": "The change adds the sentence about a bad `--terminal` value only to the `find` exit line. `groups` takes the same argparse `choices` flag, so it also exits 2 on a bad value, and the docs now describe the two commands differently. The impact is small: the exit-code table already says a bad argument exits 2, and the `start`, `window` and `resume` lines do not spell this out either.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "start_line": 2094,
+          "end_line": 2099,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The issue 193 test checks the argument list that the stub launcher received. The stub's `find` output comes from a file and does not depend on `--terminal`, so the \"reads as live\" check cannot show that the flag changes the result.",
+          "evidence": "grep -q '^find u1 .*--terminal tmux' \"$TMP/launcher.log\" || fail \"find of u1 has no --terminal tmux: $(cat \"$TMP/launcher.log\")\"",
+          "suggested_fix": "Make the stub `find` print a handle only when `--terminal tmux` is present, so the `rejoin` result depends on the flag.",
+          "explanation": "The `rejoin` result comes from the stub's canned output. Only the argument match shows the flag was passed, and the real `find` behaviour is covered only by test-launcher.sh.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[ -f \"$TMP/find-\\$2.txt\" ] && cat \"$TMP/find-\\$2.txt\"; exit 0 ;;",
+            "grep -q '^find u1 .*--terminal tmux' \"$TMP/launcher.log\" || fail \"find of u1 has no --terminal tmux: $(cat \"$TMP/launcher.log\")\""
+          ],
+          "rationale": "The stub's find output depends only on the name, not on --terminal, so the rejoin check does not depend on the flag. The argument-log grep is what verifies the flag, and test-launcher.sh covers the real find behaviour, so the gap is minor.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[ -f \"$TMP/find-\\$2.txt\" ] && cat \"$TMP/find-\\$2.txt\"; exit 0 ;;",
+            "grep -q '^u1 rejoin: ' \"$TMP/out\" || fail \"u1 not read as live: $(cat \"$TMP/out\")\"",
+            "echo 'tmux:%4 name' >\"$TMP/find-u2.txt\""
+          ],
+          "rationale": "The claim holds. The stub's `find` prints `$TMP/find-<name>.txt` whatever its arguments are, so u1 would read as `rejoin` with or without `--terminal`, and u2, which gets no flag, also gets a handle. In this test only the argument grep shows the flag's effect. That is still a valid check on crew-orch, since the real `find` behaviour is tested in test-launcher.sh, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[ -f \"$TMP/find-\\$2.txt\" ] && cat \"$TMP/find-\\$2.txt\"; exit 0 ;;",
+            "grep -q '^u1 rejoin: ' \"$TMP/out\" || fail \"u1 not read as live: $(cat \"$TMP/out\")\"",
+            "echo 'tmux:%4 name' >\"$TMP/find-u2.txt\""
+          ],
+          "rationale": "The claim holds. The stub's `find` prints `$TMP/find-<name>.txt` whatever its arguments are, so u1 would read as `rejoin` with or without `--terminal`, and u2, which gets no flag, also gets a handle. In this test only the argument grep shows the flag's effect. That is still a valid check on crew-orch, since the real `find` behaviour is tested in test-launcher.sh, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/references/launcher.md",
+        "start_line": 685,
+        "end_line": 687,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The exit-code list says a bad `--terminal` value gives exit 2 for `find`, but the `groups` line does not say so, although `groups` now takes the same flag.",
+        "evidence": "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+        "suggested_fix": "Add to the `groups` line the same sentence that the `find` line has about a `--terminal` value that is not `iterm2`, `tmux` or `herdr`.",
+        "explanation": "`launcher.md` owns the launcher's interface, so it should describe both commands that gained the flag in the same way.",
+        "needs_context": false,
+        "fingerprint": "83cbf99699211423",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,\n  `tmux` or `herdr`.",
+            "- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+            "g.add_argument(\"--terminal\", choices=[\"iterm2\", \"tmux\", \"herdr\"])"
+          ],
+          "rationale": "The change adds the sentence about a bad `--terminal` value only to the `find` exit line. `groups` takes the same argparse `choices` flag, so it also exits 2 on a bad value, and the docs now describe the two commands differently. The impact is small: the exit-code table already says a bad argument exits 2, and the `start`, `window` and `resume` lines do not spell this out either.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`, `tmux` or `herdr`. - `groups`: 2, 4. On Herdr, then 6 when the window does not answer.",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "start_line": 2094,
+        "end_line": 2099,
+        "category": "test",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The issue 193 test checks the argument list that the stub launcher received. The stub's `find` output comes from a file and does not depend on `--terminal`, so the \"reads as live\" check cannot show that the flag changes the result.",
+        "evidence": "grep -q '^find u1 .*--terminal tmux' \"$TMP/launcher.log\" || fail \"find of u1 has no --terminal tmux: $(cat \"$TMP/launcher.log\")\"",
+        "suggested_fix": "Make the stub `find` print a handle only when `--terminal tmux` is present, so the `rejoin` result depends on the flag.",
+        "explanation": "The `rejoin` result comes from the stub's canned output. Only the argument match shows the flag was passed, and the real `find` behaviour is covered only by test-launcher.sh.",
+        "needs_context": true,
+        "fingerprint": "4fa54a17c2940ca0",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[ -f \"$TMP/find-\\$2.txt\" ] && cat \"$TMP/find-\\$2.txt\"; exit 0 ;;",
+            "grep -q '^u1 rejoin: ' \"$TMP/out\" || fail \"u1 not read as live: $(cat \"$TMP/out\")\"",
+            "echo 'tmux:%4 name' >\"$TMP/find-u2.txt\""
+          ],
+          "rationale": "The claim holds. The stub's `find` prints `$TMP/find-<name>.txt` whatever its arguments are, so u1 would read as `rejoin` with or without `--terminal`, and u2, which gets no flag, also gets a handle. In this test only the argument grep shows the flag's effect. That is still a valid check on crew-orch, since the real `find` behaviour is tested in test-launcher.sh, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "expect_exit 0 norch resume grep -q '^u1 rejoin: ' \"$TMP/out\" || fail \"u1 not read as live: $(cat \"$TMP/out\")\" grep -q '^find u1 .*--terminal tmux' \"$TMP/launcher.log\" || fail \"find of u1 has no --terminal tmux: $(cat \"$TMP/launcher.log\")\" grep -q '^find u2 ' \"$TMP/launcher.log\" || fail \"no find of u2: $(cat \"$TMP/launcher.log\")\" ! grep '^find u2 ' \"$TMP/launcher.log\" | grep -q -- '--terminal' || fail \"find of u2 has --terminal: $(cat \"$TMP/launcher.log\")\" pass",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6061077961,
+      "review_url": "https://github.com/jerridan/crew/pull/194#pullrequestreview-6061077961",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "83cbf99699211423",
+          "comment_id": 4697637165
+        },
+        {
+          "fingerprint": "4fa54a17c2940ca0",
+          "comment_id": 4697637172
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 139342726302
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6134,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8983,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009083,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 970,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 9757,
+            "webSearchRequests": 0,
+            "costUSD": 0.048732,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0496403
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2935,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11076,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011181000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 78,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 21071,
+            "webSearchRequests": 0,
+            "costUSD": 0.170136,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 24,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17125410000000002
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3997,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19503,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019618,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 365,
+            "cacheReadInputTokens": 29610,
+            "cacheCreationInputTokens": 30161,
+            "webSearchRequests": 0,
+            "costUSD": 0.12726300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 173,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1292248
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5708,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11068,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011183,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 418,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 20869,
+            "webSearchRequests": 0,
+            "costUSD": 0.17531999999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 99,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17643829999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7507,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11076,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011191,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 234,
+            "cacheReadInputTokens": 20787,
+            "cacheCreationInputTokens": 21057,
+            "webSearchRequests": 0,
+            "costUSD": 0.1773094,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 63,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1784285
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3446,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 12226,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012331000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 432,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 16101,
+            "webSearchRequests": 0,
+            "costUSD": 0.068728,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 83,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0699611
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7232,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11064,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011179,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 801,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 18779,
+            "webSearchRequests": 0,
+            "costUSD": 0.08343590000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 400,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08455380000000001
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6711,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 830,
+            "cacheReadInputTokens": 36536,
+            "cacheCreationInputTokens": 13635,
+            "webSearchRequests": 0,
+            "costUSD": 0.0665056,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 15,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 11539,
+            "outputTokens": 338,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013229000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 316,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0678285
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10223,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 12226,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012331000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 743,
+            "cacheReadInputTokens": 16097,
+            "cacheCreationInputTokens": 17289,
+            "webSearchRequests": 0,
+            "costUSD": 0.1564074,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 153,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1576405
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15164,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11531,
+            "outputTokens": 449,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013776,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 426,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1000,
+            "cacheReadInputTokens": 36812,
+            "cacheCreationInputTokens": 13843,
+            "webSearchRequests": 0,
+            "costUSD": 0.1381304,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 210,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.139508
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 35044,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11068,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011183,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 16,
+            "outputTokens": 1911,
+            "cacheReadInputTokens": 180779,
+            "cacheCreationInputTokens": 32803,
+            "webSearchRequests": 0,
+            "costUSD": 0.3368638,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 364,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3379821
+      }
+    ],
+    "total_cost_usd": 1.56246,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 45,
+      "gather": 247,
+      "triage": 7270,
+      "find_verify": 36297,
+      "merge": 10
+    },
+    "errors": []
+  }
+}

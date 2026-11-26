@@ -1719,6 +1719,22 @@ expect_exit 0 python3 "$ORCH_PY" --orch closer resume
 grep -q '^closed: ' "$TMP/out" || fail "no closed line: $(cat "$TMP/out")"
 pass
 
+STEP="R9 resume of a parked item resumes the waiter session id under the item name"
+porch() { python3 "$ORCH_PY" --orch prk "$@"; }
+expect_exit 0 porch init
+expect_exit 0 porch item add pk1 --title "Parked pk1" --repo owner/lr
+mkdir -p "$TMP/wt/pk1"
+expect_exit 0 porch item pk1 set launch "{\"session_name\": \"pk1\", \"worktree\": \"$TMP/wt/pk1\", \"tab\": \"tmux:%12\", \"session_id\": \"waiter-1\", \"model\": \"sonnet\", \"terminal\": \"tmux\"}"
+printf 'the goal of pk1\n' >"$TMP/g-pk1.md"
+expect_exit 0 porch told pk1 --file "$TMP/g-pk1.md"
+expect_exit 0 porch stage pk1 build
+rm -f "$TMP/find-pk1.txt" "$TMP/find-pk1.rc"
+: >"$TMP/launcher.log"
+expect_exit 0 porch resume
+grep -q '^resume --name pk1 .*--session-id waiter-1 ' "$TMP/launcher.log" || fail "bad parked resume call: $(cat "$TMP/launcher.log")"
+! grep -q 'sid-pk1\|i-pk1' "$TMP/launcher.log" || fail "resume used an older implementer id: $(cat "$TMP/launcher.log")"
+pass
+
 # ---------------------------------------------------------------- wait (R5)
 # The usage stub now answers `check` from $TMP/level (default normal) and exits
 # with the code of the level, as crew-usage.py does.

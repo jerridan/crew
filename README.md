@@ -273,6 +273,14 @@ sub-tickets where your tickets live. It starts one project lead per item, in
 its own tab and worktree. At most three work at one time. Each project lead
 sends its questions and reports to the orchestrator, not to you.
 
+In iTerm2, the orchestrator waits up to 60 seconds for `claude` to start in
+each new tab. To wait longer, set `CREW_LAUNCHER_START_WAIT` to a number of
+seconds before you start the orchestrator session:
+
+```
+CREW_LAUNCHER_START_WAIT=90 claude --name my-orchestrator
+```
+
 A small item that needs no spec, no design choice and no review, such as a
 move of tickets to a GitHub project, goes to a subagent of the orchestrator
 instead. It gets no tab and no project lead, and the board marks its row
@@ -380,6 +388,7 @@ The mouse wheel also scrolls the pane in terminals that pass it on.
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
 | iTerm2, tmux or Herdr, for `/crew:orchestrator` | iTerm2 3.7.5 or newer with its Python API turned on, and `uv` installed, for tab groups. Or start the session inside tmux. Or start it in Herdr with `herdr-app` and `hc` installed | every `/crew:orchestrator` run |
+| `CREW_LAUNCHER_START_WAIT`, to change the wait for a new tab | The seconds that `/crew:orchestrator` waits for `claude` to start in a new iTerm2 tab, such as `90` or `2.5`. The default is 60. tmux and Herdr ignore it | optional, every `/crew:orchestrator` run in iTerm2 |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | The Codex CLI, signed in | `codex login status` passes. Without it, a run skips the plan review and says so | optional, the simple and full paths |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |

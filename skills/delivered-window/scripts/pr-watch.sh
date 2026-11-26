@@ -64,11 +64,12 @@ R=${PR#https://github.com/}; R=${R%/pull/*}; N=${PR##*/pull/}; N=${N%%[/?#]*}
 
 # The runs of the merge commit, one JSON object per line. Every page is read:
 # `--jq` runs once per page, and each page adds its runs to the stream. Usage:
-# `runs_read <api path with a query>`. A failed read returns 1 and prints
-# nothing, so the caller counts that poll as no result.
+# `runs_read <api path with a query>`. A failed read returns the nonzero
+# status of `gh` and prints nothing. The callers map any nonzero status to 2:
+# no result for that poll.
 runs_read() {
   gh api --paginate "$1" --jq '.workflow_runs[]
-    | {id, name, event, status, conclusion, created_at, updated_at} | tojson' 2>/dev/null
+    | {id, name, event, status, conclusion, created_at, updated_at, workflow_id} | tojson' 2>/dev/null
 }
 
 # The named rung: `run.deploy.workflow` names one workflow. Read every page of
@@ -104,25 +105,29 @@ wf_named() {
   return 0
 }
 
-# The default rung: judge the set of the deploy runs of the merge commit. A
-# deploy run is a `push` or `workflow_run` run whose name holds `deploy` or
-# `release`. Two event-filtered reads give the set, so `schedule` runs are never
-# read. A failed deploy run prints `deploy-failed` at once, for the one that
-# finished last. `deployed` prints when a deploy run succeeded and no run of the
-# merge, deploy or not, is unfinished: a CI run can still start a deploy. A
-# cancelled or skipped run neither blocks nor counts. Returns 2 when a read
-# fails: no result.
+# The default rung: judge the deploy runs of the merge commit. A deploy run is a
+# `push` or `workflow_run` run whose name holds `deploy` or `release`. Two
+# event-filtered reads give the set, so `schedule` runs are never read. A
+# workflow can have more than one run on the merge commit, because a re-run
+# starts a new run. Only the newest run of each workflow counts, by
+# `created_at`: a superseded run does not count. A newest run that failed
+# prints `deploy-failed` at once, for the one that finished last. `deployed`
+# prints when a newest run succeeded and no run of the merge, deploy or not, is
+# unfinished: a CI run can still start a deploy. A cancelled or skipped run
+# neither blocks nor counts. Returns 2 when a read fails: no result.
 wf_default() {
   push=$(runs_read "repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100") || return 2
   chain=$(runs_read "repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100") || return 2
   r=$(printf '%s\n%s\n' "$push" "$chain" | jq -sr '
-    [.[] | select((.name // "") | test("deploy|release"; "i"))] as $m
+    . as $all
+    | [$all[] | select((.name // "") | test("deploy|release"; "i"))]
+      | group_by(.workflow_id) | map(sort_by(.created_at) | last) as $m
     | if ($m | length) == 0 then "none"
       else ($m | map(select(.conclusion == "failure" or .conclusion == "timed_out"
                             or .conclusion == "startup_failure")) | sort_by(.updated_at) | last) as $f
         | if $f != null then "seen deploy-failed \($f.id) - \($f.updated_at) \($f.name) \($f.conclusion)"
           else ($m | map(select(.conclusion == "success")) | sort_by(.updated_at)) as $s
-            | if ($s | length) > 0 and all(.[]; .status == "completed")
+            | if ($s | length) > 0 and all($all[]; .status == "completed")
               then ($s | last) as $l
                 | "seen deployed \($l.id) - \($l.updated_at) \($l.name) succeeded; \($s | length) deploy runs succeeded"
               else "seen wait" end end end' 2>/dev/null) || return 2

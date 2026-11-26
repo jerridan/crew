@@ -194,11 +194,14 @@ that `run.deploy` names:
   the runs with `head_sha` equal to the merge commit and `event=push`, and
   every page of the runs with `event=workflow_run`. It never reads the runs of
   the other events, so a `schedule` run costs no call. A deploy run is one of
-  these runs whose name holds `deploy` or `release`, in any case. A deploy run
-  with the conclusion `failure`, `timed_out` or `startup_failure` makes the
-  script print `deploy-failed` at once, for the one that finished last. The
-  script prints `deployed` when at least one deploy run succeeded, no deploy
-  run is unfinished, and no run of any name in these two reads is unfinished.
+  these runs whose name holds `deploy` or `release`, in any case. A re-run
+  starts a new run of the same workflow, so the script judges only the newest
+  run of each workflow, by `created_at`. A superseded run of a workflow does
+  not count. A newest deploy run with the conclusion `failure`, `timed_out` or
+  `startup_failure` makes the script print `deploy-failed` at once, for the one
+  that finished last. The script prints `deployed` when at least one newest
+  deploy run succeeded, and no run of any name in these two reads is
+  unfinished.
   The last condition holds back the ship word while a CI run can still start a
   chained deploy. A deploy run with another conclusion, such as `cancelled` or
   `skipped`, neither blocks nor counts. A failed read of either event is no
@@ -226,7 +229,7 @@ The script prints one line and exits. The kinds are:
 |---|---|
 | `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run of the named workflow is `success`. With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded` |
 | `no-deploy <n> - <mergedAt> <text>` | only with both `null`: the repo has no deployment, no deploy run, no active deploy workflow and no workflow file that the merged PR added or renamed, and 2 minutes have passed since the merge (the text says so), or it has a deploy workflow, or such a file, and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
-| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run of the named workflow, or any deploy run of the default signal, has the conclusion `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
+| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run of the named workflow, or any newest deploy run of a workflow in the default signal, has the conclusion `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
 | `deploy-timeout <n> - <time> no deploy seen <timeout> minutes after the watch started` | no result by `timeout_minutes` after `run.deploy.since`, or after `mergedAt` when the record has no `since`. When a deploy was seen but is still pending, the text says `no deploy finished` |
 | `closed <n> - <time> the PR closed` | the PR closed with no merge |
 

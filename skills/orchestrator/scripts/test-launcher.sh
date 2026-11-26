@@ -807,6 +807,15 @@ r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:ABC-123'
   && [ -d "$CO/.claude/worktrees/nc1" ] && [ ! -s "$T/out" ] && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
 check 'no claude on the tab tty: exit 10, one line with the tab, the tty and the wait, the tab closed, the file removed, the worktree kept' $r
 
+# The tab does not close: exit 6, not 10, because exit 10 means the tab closed.
+# resume and window call the same iterm_launch, so one case for start covers them.
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"; : > "$STUB_DIR/osa-stop-keep"
+TERM_PROGRAM=iTerm.app run start --name nc1b --model m --principal p --checkout "$CO"
+lf=$(launch_file)
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:ABC-123' "$T/err" && grep -sqF 'did not close' "$T/err" \
+  && grep -sqF 'no claude process started' "$T/err" && [ -n "$lf" ] && [ ! -e "$lf" ] && [ ! -s "$T/out" ] && r=0
+check 'no claude and a tab that does not close: exit 6, one line naming the tab, the launch file removed' $r
+
 # The fallback warning joins the one line.
 reset_stub; auto_tab; : > "$STUB_DIR/no-claude"; : > "$STUB_DIR/uv-fail"
 TERM_PROGRAM=iTerm.app run start --name nc2 --model m --principal p --checkout "$CO"

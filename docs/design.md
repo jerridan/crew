@@ -10697,4 +10697,6 @@ Deliberately different:
     `CREW_LAUNCHER_START_WAIT`. With no process, the launcher closes the tab,
     keeps the worktree and exits 10. The callers have a timeout of 300
     seconds, and `crew-orch.py launch` fails with the line of the launcher.
-    Only the seeded tests have run it, and no crew run has used it.
+    One live probe ran `window` on iTerm2 with a command of about 1300
+    bytes: a real `claude` started and the launch file was gone. A probe
+    with no `claude` exited 10 and closed the tab. No crew run has used it.

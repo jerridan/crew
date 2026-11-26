@@ -527,13 +527,14 @@ registered, for example while the trust dialog waits. On tmux and Herdr, the
 launcher does not check for the process, so `goal-wait` says only that no
 session has registered. When `launcher.py` exits 10 (no `claude`
 process started on iTerm2), `launch` fails with exit 1 and the launcher line,
-and prints no `goal-wait`. The orchestrator sends
+and prints no `goal-wait`. It does the same for exit 6, which includes the case
+where no `claude` process started and the tab did not close: the tab stays open. The orchestrator sends
 the goal on `goal-ready`.
 
 Exit 3 prints `launch refused: <why>` when `pace.mode` is not `normal` or no
 slot is free. Exit 1 gives a failed `start` or settings call, no `Checkouts`
 line for the repo, no principal name, or an item that has a launch or a
-`subagent`. A `start` that exits 10 is a failed `start`.
+`subagent`. A `start` that exits 10 or 6 is a failed `start`.
 
 ### `close-item <item> [--continue] [--stop-processes] [--from <name>]`
 

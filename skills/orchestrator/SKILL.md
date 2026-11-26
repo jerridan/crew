@@ -198,7 +198,8 @@ runs in the tab and has not registered. It can wait on the trust dialog
 the process, so `goal-wait` says only that no session has registered. When no
 `claude` process starts in the tab on iTerm2, `launcher.py` exits 10, and
 `launch` fails with the line of the launcher and prints no
-`goal-wait`. Put a notice for the principal in the inbox, with
+`goal-wait`. When the tab also does not close, `launcher.py` exits 6, the
+line names the tab, and the tab stays open: close it before you retry. Put a notice for the principal in the inbox, with
 the item and its `tab`, and send the goal when `ListAgents` shows the name.
 
 The goal message carries:

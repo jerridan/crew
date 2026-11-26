@@ -217,6 +217,10 @@ answers that dialog. Its status line waits too.
     file, keeps the worktree, and exits 10. One line on stderr names the tab,
     the tty and the wait. A caller that tries again leaves no dead tab. A
     warning of the helper fallback joins that line.
+  - No `claude` process in the wait, and the tab does not close: the launcher
+    removes the file, keeps the worktree, and exits 6, not 10. One line on
+    stderr names the tab, says that no `claude` process started, and says that
+    the tab did not close. The tab stays open. Close it by hand before a retry.
   - The tty or the processes cannot be read: the launcher closes the tab,
     removes the file, and exits 6.
 
@@ -746,11 +750,11 @@ a fixed order, and the first check that fails decides the exit:
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal, or on Herdr no `herdr-app` or no `hc`. The line names `$TERM_PROGRAM` and the supported terminals, or the missing program. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. `start`, `resume` and `window` on iTerm2: the launch file cannot be written, the typed line is longer than 1024 bytes, or the tty of the new tab or the processes cannot be read. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed or timed out, `hc` failed, `herdr-app` failed in any other way (`focus`), no tab holds the terminal (`stop`), or `tab.close` failed and the tab is still there. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. `start`, `resume` and `window` on iTerm2: no `claude` process started and the tab did not close (the line names the tab), the launch file cannot be written, the typed line is longer than 1024 bytes, or the tty of the new tab or the processes cannot be read. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed or timed out, `hc` failed, `herdr-app` failed in any other way (`focus`), no tab holds the terminal (`stop`), or `tab.close` failed and the tab is still there. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab, pane or Herdr terminal that does not exist (on Herdr, one that Herdr names as unknown or that `hc get` does not find) |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
 | 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), the caller's own working directory in the worktree, or a lock that `remove` cannot prove dead. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. Also a dead lock owner whose pid runs again right before the unlock. The worktree, its lock and the branches stay |
-| 10 | `start`, `resume` and `window` on iTerm2: no `claude` process ran on the tty of the new tab in `CREW_LAUNCHER_START_WAIT` seconds (60 by default). The launcher closed the tab and removed the launch file. The worktree stays. The line names the tab, the tty and the wait. No other failure uses 10 |
+| 10 | `start`, `resume` and `window` on iTerm2: no `claude` process ran on the tty of the new tab in `CREW_LAUNCHER_START_WAIT` seconds (60 by default). The launcher closed the tab and removed the launch file. The worktree stays. The line names the tab, the tty and the wait. No other failure uses 10. When the tab does not close, the exit is 6 |
 
 ## Test
 

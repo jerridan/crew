@@ -10696,7 +10696,7 @@ Deliberately different:
     `osascript` fallback. It then waits until a `claude` process runs on the
     tty of the new tab. The wait is 60 seconds, or the value of
     `CREW_LAUNCHER_START_WAIT`. With no process, the launcher closes the tab,
-    keeps the worktree and exits 10. The callers have a timeout of 300
+    keeps the worktree and exits 10. When the tab does not close, the launcher exits 6 and the line names the tab, so exit 10 always means that the tab closed. The callers have a timeout of 300
     seconds, and `crew-orch.py launch` fails with the line of the launcher.
     One live probe ran `window` on iTerm2 with a command of about 1300
     bytes: a real `claude` started and the launch file was gone. A probe

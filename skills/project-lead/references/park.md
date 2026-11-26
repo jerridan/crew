@@ -59,10 +59,10 @@ directory and the goal slug and nothing else.
 2. When `run.park.reason` is `usage`, or is `pause` for the usage window, and
    the charter has a `Usage limit:` line, arm `crew-usage.py wait` as a
    background Bash command.
-3. When `run.park.until` is set, and `crew-usage.py wait` exits 1 or the
-   charter has no `Usage limit:` line, arm a background timer that ends at
-   that epoch: `sleep $(( <until> - $(date +%s) ))`. A time in the past
-   ends the timer at once.
+3. When `run.park.until` is set and no `crew-usage.py wait` runs, arm a
+   background timer that ends at that epoch:
+   `sleep $(( <until> - $(date +%s) ))`. No `wait` runs when step 2 armed
+   none, or when `wait` exited 1. A time in the past ends the timer at once.
 4. Wait. A message or typed text wakes you only as the table says.
 
 | `run.park.reason` | What wakes the run |

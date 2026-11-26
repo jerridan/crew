@@ -1043,7 +1043,9 @@ def iterm_launch(name, group, color, command, worktree, wait, where):
 
     This function owns the file and the tab. Every failure after the file
     exists removes the file, and every failure after the tab opened closes it.
-    A good launch leaves the file: the command removes it before claude runs."""
+    On a good launch this function does not remove the file, because the typed
+    command removes it before claude runs. Exit NO_CLAUDE always means that the
+    tab closed: when the close fails, the exit is TERMINAL_STEP."""
     path = write_launch_file(command)
     handle = None
     warnings = []

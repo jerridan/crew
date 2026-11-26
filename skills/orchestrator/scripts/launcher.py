@@ -1065,6 +1065,8 @@ def iterm_launch(name, group, color, command, worktree, wait, where):
             os.unlink(path)
         except OSError:
             pass
+        if isinstance(e, Fail) and e.code == NO_CLAUDE and handle is not None and why:
+            e.code = TERMINAL_STEP
         if isinstance(e, Fail) and notes:
             e.line = "%s (%s)" % (e.line, "; ".join(one_line(n) for n in notes))
             e.args = (e.line,)

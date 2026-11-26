@@ -1,0 +1,1620 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 201,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Read every page of the deploy poll and wait for every deploy run",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/201"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "e55cf4c2a8f54a22f3f5a3c4e8656d0d15970cd2",
+    "head": "cd3cc1983fd47bb9de1830b828f1b8b5dfa6f3a8",
+    "started_at": "2026-11-26T16:16:55.541Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Read every page of the deploy poll and wait for every deploy run\n\n## Summary\n\nThe deploy watch missed the deploy of a merge on a busy default branch. It read only the first 100 runs of the merge commit, and scheduled workflows put about 1,000 runs on one commit in an hour, so the deploy run was not on that page. It also judged only the newest deploy run, but a monorepo merge starts one deploy workflow per service. Now the watch reads every page, reads only the runs that the merge itself started (push and chained workflow_run events), and prints `deployed` only when every deploy run of the merge finished and at least one succeeded. A failed deploy run prints `deploy-failed` at once. A named `Deploy: workflow:` reads that workflow's own runs on every page.\n\nCloses #146\n\n**Ticket:** [jerridan/crew#146](https://github.com/jerridan/crew/issues/146)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/delivered-window/references/pr-watch.md`, \"The deploy poll\", owns the rule and states it whole. `skills/project-lead/SKILL.md`, \"Standing instructions\", owns the `Deploy` lines. `docs/design.md` §15.127 (the deploy watch) and the new finding 170.\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/pr-watch.sh`: `wf_check()` is gone. `runs_read()` reads every page. `wf_default()` reads `event=push` and `event=workflow_run` and judges the set of deploy runs. `wf_named()` finds the named workflow's ids through `actions/workflows` and reads `actions/workflows/<id>/runs?head_sha=` on every page, because a repository-wide `head_sha` read returns 1,000 runs at most. A failed runs read makes no `no-deploy` decision; `deploy_timeout()` still runs.\n- `skills/delivered-window/scripts/test-pr-watch-deploy.sh`: the stub `gh` serves pages of 100, filters by `head_sha` and `event`, honours `--paginate`, serves the workflow-scoped endpoint and logs each call. New cases for each Outcome of the issue, for failed reads and for the line shape.\n- `skills/delivered-window/references/pr-watch.md` and `skills/project-lead/SKILL.md`: the prose matches the code.\n- `docs/design.md`: finding 170. Both manifests: 0.1.138.\n\n### Constraints that applied\n\n- The line format `<kind> <id> - <time> <text>` and the exit codes did not change; `<id>` stays one token, so `watch-step.py`'s `split(None, 4)` still parses it. The `deployed` text of the default signal now ends `; <n> deploy runs succeeded`.\n- Bash with `gh` and `jq` only. A failed read prints no line.\n- Not in scope, as the issue says: matching a deploy run by anything other than its name. The deployments rung did not change.\n\n### How this was verified\n\n`bash skills/delivered-window/scripts/test-pr-watch-deploy.sh` (46 of 46), `test-watch-step.sh` (90 of 90) and `test-window-watch.sh` (114 of 114) pass at the head. The test commit 0673c83 fails the first script (31 of 46) on the new cases before the fix. A Codex review read the spec and the plan before any code; its findings (failed reads, the 1,000-run cap of a `head_sha` search, both event streams in one case) are in the code and the tests.\n\n### Known gaps\n\n- No crew run has used the new watch against a real repo.\n- A chained deploy that GitHub creates some seconds after its CI run ends can miss the set when another deploy run already succeeded.\n- A run that never leaves `queued` or `waiting` on the merge commit holds back `deployed` until the timeout.\n\n<details><summary>spec.md</summary>\n\n# Spec: the deploy watch on a busy default branch (jerridan/crew#146)\n\nRepo: /Users/jerridanquiring/src/crew/.claude/worktrees/issue-146\n\n## The problem\n\n`skills/delivered-window/scripts/pr-watch.sh`'s `wf_check()` reads one page of `actions/runs?head_sha=<merge sha>&per_page=100` and judges the newest run whose name matches. On a default branch with scheduled workflows, a merge commit collects about 1,000 runs in an hour, almost all `schedule` events. The deploy run is not on the first page, so the watch prints nothing. In a monorepo, one merge starts several deploy runs, one per service, and the watch judges only the newest.\n\n## Requirements\n\nR1. **Every page.** The workflow-run rungs of the deploy poll read every page of the runs they query, so a matching run is found at any position in the list.\n- AC1: in the seeded test, the merge commit has more than 100 runs over two or more pages, and the deploy run is only on a later page. `deploy-once` prints `deployed`.\n\nR2. **The default rung keeps only the merge's own runs.** With no `environment` and no `workflow` in `run.deploy`, and no GitHub deployments in the repo, the poll counts only runs whose `event` is `push` or `workflow_run`, whose name holds `deploy` or `release` (case-insensitive, as now).\n- AC2: in the seeded test, a `schedule` run and a `workflow_dispatch` run named like a deploy, with conclusion `success`, are the only matching names on the merge commit. `deploy-once` prints no `deployed` line.\n\nR3. **The default rung waits for every deploy run of the merge.** The rung judges the set of the matching runs of R2, not the newest one:\n- A run whose conclusion is `failure`, `timed_out` or `startup_failure` makes the poll print `deploy-failed` at once. When more than one run failed, the line names the one with the latest `updated_at`, with its id, time and name.\n- `deployed` prints only when at least one matching run succeeded, no matching run is still unfinished (its `status` is not `completed`), and no `push` or `workflow_run` run of any name on the merge commit is unfinished. The last condition holds back the ship word while a CI run can still start a chained deploy (a `workflow_run` event).\n- A completed run with any other conclusion (`cancelled`, `skipped`, `neutral` and the like) neither blocks nor counts as a success.\n- The `deployed` line names the matching run that finished last, and says how many deploy runs succeeded.\n- AC3a: two matching runs, one `success` and one `in_progress`: no line.\n- AC3b: both `success`: one `deployed` line.\n- AC3c: one `success`, one `failure`: one `deploy-failed` line naming the failed run.\n- AC3d: one matching run `success`, and a `push` run named `CI` still `in_progress`: no line.\n\nR4. **`Deploy: workflow: <name>` still works for one named workflow.** It reads every page (R1), keeps every event (a named deploy can be a `workflow_dispatch`), and judges the newest run of that name, as now.\n- AC4: in the seeded test, `run.deploy.workflow` names a run on a later page: `deployed`. A newer run of that name with `failure`: `deploy-failed`.\n\nR5. **The line format and the exit codes do not change.** Each line is `<kind> <id> - <time> <text>`, with one token for `<id>`. `skills/delivered-window/scripts/watch-step.py` parses it with `split(None, 4)`.\n- AC5: `bash skills/delivered-window/scripts/test-watch-step.sh` and `bash skills/delivered-window/scripts/test-window-watch.sh` still pass.\n\nR6. **The references agree with the code.** `skills/delivered-window/references/pr-watch.md`'s \"The deploy poll\" owns the rule and states R1 to R4. Every other file that states how the poll picks or judges a run says the same or points at that section, among them `skills/project-lead/SKILL.md`'s `Deploy` lines and `skills/delivered-window/SKILL.md`. The comment above `wf_check()` and the script header say the same.\n- AC6: a reviewer reads each of those passages beside the code and finds no disagreement. No passage says \"the newest run\" of the default rung.\n\nR7. **The test covers each rule.** `skills/delivered-window/scripts/test-pr-watch-deploy.sh`'s stub `gh` answers `--paginate`, the `page` parameter and the `event` query parameter the way GitHub does, so AC1 to AC4 test the real queries. Every case that passed before still passes.\n- AC7: `bash skills/delivered-window/scripts/test-pr-watch-deploy.sh` exits 0.\n\n## Global constraints\n\n- `pr-watch.sh` stays bash, with `gh` and `jq` as its only tools.\n- A failed `gh` read is no result for that poll, as now: it never prints a line.\n- The default rung queries by event: one paginated `actions/runs?head_sha=<sha>&event=push` read and one with `event=workflow_run`. It never reads the unfiltered list of the merge commit's runs, so `schedule` runs cost it no calls.\n- ASD-STE100 for every prose change, and `writing-standard.md` for every reference. A rule lives in one file.\n- A change under `skills/` bumps `version` in both manifests; the orchestrator owns the value, and the project lead sets it at the PR.\n- A new `docs/design.md` §15 finding records the change; the project lead writes it.\n\n## Non-goals\n\n- Recognising a deploy run by anything other than its name (the issue's \"Not in scope\"). `Deploy` stays the override, and `manual` stays the answer for a deploy inside the CI workflow or outside GitHub.\n- The deployments rung (`environment`, or a repo with GitHub deployments) does not change.\n- The `no-deploy` rules (the 2-minute and 10-minute waits) do not change, except that they see the runs of R2.\n- Many named workflows in `Deploy`.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take?\nRoute: precedent\nAnswer: change path\nCitation: the deploy watch finds the deploy of a merge commit on a busy default branch, and it waits for every deploy run\nConfidence: high Timestamp: 2026-11-26T15:37:24Z\n\n## Does the work take the light path?\nRoute: precedent\nAnswer: no: the criterion does not cover that the references agree with the code, and the multi-run rule has open choices (the line's id, a chained CD that starts late)\nCitation: scout-1's report and charter.md\nConfidence: high Timestamp: 2026-11-26T15:38:46Z\n\n## Preference sweep: what does the principal want that the repo cannot say?\nRoute: preference\nAnswer: none\nCitation: spec.md R3 and R5 choose the id token and the hold for an unfinished push run; both are reversible\nConfidence: medium Timestamp: 2026-11-26T15:39:30Z\n\n## Spec critic r1: adjudication\nRoute: precedent\nAnswer: both accepted and applied to spec.md: 1 suggestion (the default rung must query by event, two paginated reads), 2 suggestion (several failed runs: name the one with the latest updated_at)\nCitation: reviews/spec-critic-r1.md\nConfidence: high Timestamp: 2026-11-26T15:43:07Z\n\n## Plan review: which findings does the run act on?\nRoute: precedent\nAnswer: 3 of 3 findings sent to the ICs\nCitation: reviews/plan-review-r1.md\nConfidence: high\nFinding: F1 blocking (reviewer: blocking) — sent to ic-deploy-watch-r1\nFinding: F2 blocking (reviewer: blocking) — sent to ic-deploy-watch-r1\nFinding: F3 suggestion (reviewer: suggestion) — sent to ic-deploy-watch-r1 Timestamp: 2026-11-26T15:48:30Z\n\n## Verify deploy-watch r1\nRoute: precedent\nAnswer: accepted: crew-step verify all ok (criterion exit 0, red at 0673c83 exits 1, 4 files in the file set, no suite); diff read against spec R1-R7 and the three plan findings\nCitation: verify-r1.out, diffs/deploy-watch-verify.patch\nConfidence: high Timestamp: 2026-11-26T16:09:59Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 6
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "hunks": 8
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes the deploy-watch logic in pr-watch.sh (pagination, event filtering, set-based deploy judgment, error handling, timeout refactor) that decides the ship word.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/delivered-window/scripts/pr-watch.sh: wf_default() jq set logic (all(.[]; .status==\"completed\") over both streams, failure/success selection)",
+        "skills/delivered-window/scripts/pr-watch.sh: wf_named() workflow id lookup via $ENV.DEP_WF, caching of wf_ids, multi-id handling",
+        "skills/delivered-window/scripts/pr-watch.sh: runs_read() with --paginate and --jq per page; failed-read handling (return 2) and deploy_timeout path",
+        "skills/delivered-window/scripts/pr-watch.sh: deploy_poll() control flow after wf_default/wf_named; no-deploy decision when read fails; deploy_timeout extraction",
+        "skills/delivered-window/scripts/pr-watch.sh: empty-stream printf with jq -s when a read returns nothing",
+        "skills/delivered-window/scripts/test-pr-watch-deploy.sh: stub gh pagination and filtering fidelity"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "note": "Core logic rewrite: paginated event-filtered reads, set-based deploy judgment, named workflow via its own runs, timeout helper extracted."
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "note": "Stub gh now paginates and filters by event/head_sha/workflow id; many new cases for each rule and failed reads."
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "Spec of the deploy poll updated to match new behavior; line table updated."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 170 describing the change."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "One-line wording of the workflow signal; the agent reads it."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump 0.1.138."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump 0.1.138."
+        }
+      ],
+      "summary": "Fixes the deploy watch so it reads every page of runs of the merge commit, restricted to push and workflow_run events, and judges all deploy runs as a set. It prints deploy-failed at once on any failed deploy run and deployed only when a deploy run succeeded and no run is unfinished. Named workflows now read that workflow's own runs of any event, failed reads make no decision, and the tests, docs and versions are updated."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes the deploy-watch logic in pr-watch.sh (pagination, event filtering, set-based deploy judgment, error handling, timeout refactor) that decides the ship word.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5848,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21626,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021736000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 348,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 31448,
+              "webSearchRequests": 0,
+              "costUSD": 0.25855199999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 172,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.26072559999999995
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/pr-watch.sh",
+            "start_line": 121,
+            "end_line": 123,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Any failed deploy run in the set wins over a newer deploy run of the same workflow that succeeded, so a superseded failure gives `deploy-failed` again on every re-arm.",
+            "evidence": "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"\n                            or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f\n        | if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "suggested_fix": "Keep only the newest run per workflow name (group_by(.name) | map(max_by(.created_at))) before you judge failures and successes.",
+            "explanation": "Re-running CI starts a new `workflow_run` deploy run with a new id, but the old failed run stays on the merge commit, so a re-armed watch can never print `deployed` and prints `deploy-failed` on its first poll.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 41562,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21648,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021758000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 3748,
+              "cacheReadInputTokens": 31697,
+              "cacheCreationInputTokens": 40916,
+              "webSearchRequests": 0,
+              "costUSD": 0.40864340000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 3195,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.41081920000000005
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/pr-watch.sh",
+            "start_line": 65,
+            "end_line": 68,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The runs_read comment says a failed read returns 1, but the function passes on gh's own exit status, and its callers map any failure to return 2.",
+            "evidence": "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+            "suggested_fix": "Say \"A failed read returns nonzero\".",
+            "explanation": "gh can exit with codes other than 1, so the comment states a return value the code does not promise.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9199,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21634,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021759,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 652,
+              "cacheReadInputTokens": 31366,
+              "cacheCreationInputTokens": 32198,
+              "webSearchRequests": 0,
+              "costUSD": 0.27691319999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 275,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2790891
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8008,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 34256,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0034366000000000006,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 939,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 44384,
+              "webSearchRequests": 0,
+              "costUSD": 0.18692999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 885,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1903666
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7274,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21636,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021746,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 294,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 31652,
+              "webSearchRequests": 0,
+              "costUSD": 0.259104,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 61,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2612786
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+            "start_line": 275,
+            "end_line": 275,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "No test covers a failed deploy run alongside an unfinished run, although the code prints deploy-failed at once and the docs state it.",
+            "evidence": "check 'AC3c push success, workflow_run failure' failed:2",
+            "explanation": "The wf_default branch that fails before it checks for unfinished runs can regress to waiting, and no case would fail.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+            "start_line": 313,
+            "end_line": 315,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The wf_named paths for several workflows with the same name (wf_ids loop) and for a newest run that is unfinished are not tested.",
+            "evidence": "check 'named workflow does not exist, 3 minutes' none",
+            "explanation": "The new multi-id loop and the cache of wf_ids are new behaviour with no test that fails if they break.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8459,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21634,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021744000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1066,
+              "cacheReadInputTokens": 35488,
+              "cacheCreationInputTokens": 30123,
+              "webSearchRequests": 0,
+              "costUSD": 0.13470880000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 462,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1368832
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "start_line": 65,
+          "end_line": 68,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The runs_read comment says a failed read returns 1, but the function passes on gh's own exit status, and its callers map any failure to return 2.",
+          "evidence": "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+          "suggested_fix": "Say \"A failed read returns nonzero\".",
+          "explanation": "gh can exit with codes other than 1, so the comment states a return value the code does not promise.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+            "gh api --paginate \"$1\" --jq '.workflow_runs[]"
+          ],
+          "rationale": "runs_read returns gh's own exit status, which can be other than 1. The comment overstates it, but callers only test for nonzero, so the effect is trivial.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+            "gh api --paginate \"$1\" --jq '.workflow_runs[]\n    | {id, name, event, status, conclusion, created_at, updated_at} | tojson' 2>/dev/null",
+            "one=$(runs_read \"repos/$R/actions/workflows/$id/runs?head_sha=$oid&per_page=100\") || return 2"
+          ],
+          "rationale": "The new `runs_read` passes on whatever exit status `gh api` returns, and gh can exit with codes other than 1 (for example 4 for an auth failure). So the comment's \"returns 1\" is not exact. Every caller checks with `|| return 2`, so the behaviour is still correct and only the comment is slightly wrong.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+            "gh api --paginate \"$1\" --jq '.workflow_runs[]\n    | {id, name, event, status, conclusion, created_at, updated_at} | tojson' 2>/dev/null",
+            "one=$(runs_read \"repos/$R/actions/workflows/$id/runs?head_sha=$oid&per_page=100\") || return 2"
+          ],
+          "rationale": "The new `runs_read` passes on whatever exit status `gh api` returns, and gh can exit with codes other than 1 (for example 4 for an auth failure). So the comment's \"returns 1\" is not exact. Every caller checks with `|| return 2`, so the behaviour is still correct and only the comment is slightly wrong.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "start_line": 275,
+          "end_line": 275,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "No test covers a failed deploy run alongside an unfinished run, although the code prints deploy-failed at once and the docs state it.",
+          "evidence": "check 'AC3c push success, workflow_run failure' failed:2",
+          "explanation": "The wf_default branch that fails before it checks for unfinished runs can regress to waiting, and no case would fail.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'AC3c push success, workflow_run failure' failed:2",
+            "check 'AC3a push success, workflow_run in progress' none"
+          ],
+          "rationale": "No AC3 case combines a failed deploy run with an unfinished run. AC3a pairs success with in_progress, and AC3c pairs success with failure. A regression that waits on unfinished runs before reporting the failure would pass every test.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'AC3c push success, workflow_run failure' failed:2",
+            "check 'two failures name the latest' failed:2",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "if ($s | length) > 0 and all(.[]; .status == \"completed\")"
+          ],
+          "rationale": "The claim holds. In `wf_default`, the failure check runs before the check for unfinished runs, so a failed deploy run prints `deploy-failed` at once. But every failure case in the new tests (AC3c and 'two failures name the latest') has only completed runs. If the code regressed to waiting while another run is in progress, no case would fail.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'AC3c push success, workflow_run failure' failed:2",
+            "check 'two failures name the latest' failed:2",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "if ($s | length) > 0 and all(.[]; .status == \"completed\")"
+          ],
+          "rationale": "The claim holds. In `wf_default`, the failure check runs before the check for unfinished runs, so a failed deploy run prints `deploy-failed` at once. But every failure case in the new tests (AC3c and 'two failures name the latest') has only completed runs. If the code regressed to waiting while another run is in progress, no case would fail.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "start_line": 313,
+          "end_line": 315,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The wf_named paths for several workflows with the same name (wf_ids loop) and for a newest run that is unfinished are not tested.",
+          "evidence": "check 'named workflow does not exist, 3 minutes' none",
+          "explanation": "The new multi-id loop and the cache of wf_ids are new behaviour with no test that fails if they break.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "WFN='{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"path\":\".github/workflows/ci.yml\",\"state\":\"active\"},{\"id\":55,\"name\":\"Deploy CD\",\"path\":\".github/workflows/cd.yml\",\"state\":\"active\"}]}'",
+            "check 'named workflow does not exist, 3 minutes' none",
+            "for id in $wf_ids; do"
+          ],
+          "rationale": "pr-watch.sh adds a loop over multiple workflow ids, but the tests give the named workflow a single id (55). No test has two workflows with the same name, and none has an unfinished newest run of a named workflow. The gap is real and minor.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for id in $wf_ids; do",
+            "wf_ids=$(printf '%s' \"$ids\" | tr '\\n' ' ')",
+            "WFN='{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"path\":\".github/workflows/ci.yml\",\"state\":\"active\"},{\"id\":55,\"name\":\"Deploy CD\",\"path\":\".github/workflows/cd.yml\",\"state\":\"active\"}]}'",
+            "check 'named workflow does not exist, 3 minutes' none"
+          ],
+          "rationale": "Every named-rung case uses WFN, which has only one workflow named \"Deploy CD\" (id 55). No case has a newest run that is still unfinished, and every case runs deploy-once, so the loop over several ids, the merge of their runs and the wf_ids cache never run under test. The finding is about test coverage of new code, so the author can decide.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for id in $wf_ids; do",
+            "wf_ids=$(printf '%s' \"$ids\" | tr '\\n' ' ')",
+            "WFN='{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"path\":\".github/workflows/ci.yml\",\"state\":\"active\"},{\"id\":55,\"name\":\"Deploy CD\",\"path\":\".github/workflows/cd.yml\",\"state\":\"active\"}]}'",
+            "check 'named workflow does not exist, 3 minutes' none"
+          ],
+          "rationale": "Every named-rung case uses WFN, which has only one workflow named \"Deploy CD\" (id 55). No case has a newest run that is still unfinished, and every case runs deploy-once, so the loop over several ids, the merge of their runs and the wf_ids cache never run under test. The finding is about test coverage of new code, so the author can decide.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "start_line": 121,
+          "end_line": 123,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Any failed deploy run in the set wins over a newer deploy run of the same workflow that succeeded, so a superseded failure gives `deploy-failed` again on every re-arm.",
+          "evidence": "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"\n                            or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f\n        | if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+          "suggested_fix": "Keep only the newest run per workflow name (group_by(.name) | map(max_by(.created_at))) before you judge failures and successes.",
+          "explanation": "Re-running CI starts a new `workflow_run` deploy run with a new id, but the old failed run stays on the merge commit, so a re-armed watch can never print `deployed` and prints `deploy-failed` on its first poll.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"\n                            or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f\n        | if $f != null then \"seen deploy-failed"
+          ],
+          "rationale": "The jq code checks for any failed run before it looks at successes, with no per-workflow newest-run filter. A superseded failure therefore always yields deploy-failed. The spec asks for \"deploy-failed at once\", and a GitHub re-run keeps the same run id, so the case only arises with a new chained run. That makes it an edge case.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"",
+            "or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "[.[] | select((.name // \"\") | test(\"deploy|release\"; \"i\"))] as $m"
+          ],
+          "rationale": "wf_default keeps every failed deploy run of the merge commit and does not keep only the newest run per workflow, so an old failure beats a newer success. For example, a chained workflow_run deploy started again by re-running CI gets a new id, and the re-armed watch still prints deploy-failed. The old wf_check judged only the newest run, so this change caused the problem, but only on a narrow re-run path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"",
+            "or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "[.[] | select((.name // \"\") | test(\"deploy|release\"; \"i\"))] as $m"
+          ],
+          "rationale": "wf_default keeps every failed deploy run of the merge commit and does not keep only the newest run per workflow, so an old failure beats a newer success. For example, a chained workflow_run deploy started again by re-running CI gets a new id, and the re-armed watch still prints deploy-failed. The old wf_check judged only the newest run, so this change caused the problem, but only on a narrow re-run path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "start_line": 275,
+        "end_line": 275,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "No test covers a failed deploy run alongside an unfinished run, although the code prints deploy-failed at once and the docs state it.",
+        "evidence": "check 'AC3c push success, workflow_run failure' failed:2",
+        "explanation": "The wf_default branch that fails before it checks for unfinished runs can regress to waiting, and no case would fail.",
+        "needs_context": false,
+        "fingerprint": "dcb838185bbed568",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'AC3c push success, workflow_run failure' failed:2",
+            "check 'two failures name the latest' failed:2",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "if ($s | length) > 0 and all(.[]; .status == \"completed\")"
+          ],
+          "rationale": "The claim holds. In `wf_default`, the failure check runs before the check for unfinished runs, so a failed deploy run prints `deploy-failed` at once. But every failure case in the new tests (AC3c and 'two failures name the latest') has only completed runs. If the code regressed to waiting while another run is in progress, no case would fail.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "check 'AC3c push success, workflow_run failure' failed:2",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "start_line": 313,
+        "end_line": 315,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The wf_named paths for several workflows with the same name (wf_ids loop) and for a newest run that is unfinished are not tested.",
+        "evidence": "check 'named workflow does not exist, 3 minutes' none",
+        "explanation": "The new multi-id loop and the cache of wf_ids are new behaviour with no test that fails if they break.",
+        "needs_context": true,
+        "fingerprint": "6fcffdefa1a757f4",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for id in $wf_ids; do",
+            "wf_ids=$(printf '%s' \"$ids\" | tr '\\n' ' ')",
+            "WFN='{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"path\":\".github/workflows/ci.yml\",\"state\":\"active\"},{\"id\":55,\"name\":\"Deploy CD\",\"path\":\".github/workflows/cd.yml\",\"state\":\"active\"}]}'",
+            "check 'named workflow does not exist, 3 minutes' none"
+          ],
+          "rationale": "Every named-rung case uses WFN, which has only one workflow named \"Deploy CD\" (id 55). No case has a newest run that is still unfinished, and every case runs deploy-once, so the loop over several ids, the merge of their runs and the wf_ids cache never run under test. The finding is about test coverage of new code, so the author can decide.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "check 'AC4 a newer run of that name failed' failed:2 setup 3 \"$NODEP\" '{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"state\":\"active\"}]}' \"$WFRUNS\" check 'named workflow does not exist, 3 minutes' none",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/scripts/pr-watch.sh",
+        "start_line": 121,
+        "end_line": 123,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "Any failed deploy run in the set wins over a newer deploy run of the same workflow that succeeded, so a superseded failure gives `deploy-failed` again on every re-arm.",
+        "evidence": "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"\n                            or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f\n        | if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+        "suggested_fix": "Keep only the newest run per workflow name (group_by(.name) | map(max_by(.created_at))) before you judge failures and successes.",
+        "explanation": "Re-running CI starts a new `workflow_run` deploy run with a new id, but the old failed run stays on the merge commit, so a re-armed watch can never print `deployed` and prints `deploy-failed` on its first poll.",
+        "needs_context": false,
+        "fingerprint": "06c2e3ca8b284f75",
+        "severity": "suggestion",
+        "score": 82,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\"",
+            "or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f",
+            "| if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+            "[.[] | select((.name // \"\") | test(\"deploy|release\"; \"i\"))] as $m"
+          ],
+          "rationale": "wf_default keeps every failed deploy run of the merge commit and does not keep only the newest run per workflow, so an old failure beats a newer success. For example, a chained workflow_run deploy started again by re-running CI gets a new id, and the re-armed watch still prints deploy-failed. The old wf_check judged only the newest run, so this change caused the problem, but only on a narrow re-run path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "span_text": "else ($m | map(select(.conclusion == \"failure\" or .conclusion == \"timed_out\" or .conclusion == \"startup_failure\")) | sort_by(.updated_at) | last) as $f | if $f != null then \"seen deploy-failed \\($f.id) - \\($f.updated_at) \\($f.name) \\($f.conclusion)\"",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/scripts/pr-watch.sh",
+        "start_line": 65,
+        "end_line": 68,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The runs_read comment says a failed read returns 1, but the function passes on gh's own exit status, and its callers map any failure to return 2.",
+        "evidence": "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+        "suggested_fix": "Say \"A failed read returns nonzero\".",
+        "explanation": "gh can exit with codes other than 1, so the comment states a return value the code does not promise.",
+        "needs_context": false,
+        "fingerprint": "6ae37795eaa52733",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# `runs_read <api path with a query>`. A failed read returns 1 and prints",
+            "gh api --paginate \"$1\" --jq '.workflow_runs[]\n    | {id, name, event, status, conclusion, created_at, updated_at} | tojson' 2>/dev/null",
+            "one=$(runs_read \"repos/$R/actions/workflows/$id/runs?head_sha=$oid&per_page=100\") || return 2"
+          ],
+          "rationale": "The new `runs_read` passes on whatever exit status `gh api` returns, and gh can exit with codes other than 1 (for example 4 for an auth failure). So the comment's \"returns 1\" is not exact. Every caller checks with `|| return 2`, so the behaviour is still correct and only the comment is slightly wrong.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "# The runs of the merge commit, one JSON object per line. Every page is read: # `--jq` runs once per page, and each page adds its runs to the stream. Usage: # `runs_read <api path with a query>`. A failed read returns 1 and prints # nothing, so the caller counts that poll as no result.",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6077427181,
+      "review_url": "https://github.com/jerridan/crew/pull/201#pullrequestreview-6077427181",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "dcb838185bbed568",
+          "comment_id": 4711004660
+        },
+        {
+          "fingerprint": "6fcffdefa1a757f4",
+          "comment_id": 4711004669
+        },
+        {
+          "fingerprint": "06c2e3ca8b284f75",
+          "comment_id": 4711004675
+        },
+        {
+          "fingerprint": "6ae37795eaa52733",
+          "comment_id": 4711004680
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 140039555683
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7134,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16724,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016834,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1079,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 17500,
+            "webSearchRequests": 0,
+            "costUSD": 0.080794,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0824774
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5848,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21626,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021736000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 348,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 31448,
+            "webSearchRequests": 0,
+            "costUSD": 0.25855199999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 172,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.26072559999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7274,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21636,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021746,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 294,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 31652,
+            "webSearchRequests": 0,
+            "costUSD": 0.259104,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 61,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2612786
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8008,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 34256,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0034366000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 939,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 44384,
+            "webSearchRequests": 0,
+            "costUSD": 0.18692999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 885,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1903666
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 9199,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21634,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021759,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 652,
+            "cacheReadInputTokens": 31366,
+            "cacheCreationInputTokens": 32198,
+            "webSearchRequests": 0,
+            "costUSD": 0.27691319999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 275,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2790891
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8459,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21634,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021744000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1066,
+            "cacheReadInputTokens": 35488,
+            "cacheCreationInputTokens": 30123,
+            "webSearchRequests": 0,
+            "costUSD": 0.13470880000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 462,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1368832
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6764,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22246,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022365999999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 878,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 47906,
+            "webSearchRequests": 0,
+            "costUSD": 0.2008487,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 128,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2030853
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3709,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29388,
+            "outputTokens": 345,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031113,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 312,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 466,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28898,
+            "webSearchRequests": 0,
+            "costUSD": 0.1206927,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 146,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.123804
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5773,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29385,
+            "outputTokens": 456,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031665,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 425,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 777,
+            "cacheReadInputTokens": 37629,
+            "cacheCreationInputTokens": 29409,
+            "webSearchRequests": 0,
+            "costUSD": 0.12917689999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 205,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1323434
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8136,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22242,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022367000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 591,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 26115,
+            "webSearchRequests": 0,
+            "costUSD": 0.220748,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 140,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2229847
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12588,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29374,
+            "outputTokens": 420,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031474000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 389,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 942,
+            "cacheReadInputTokens": 37614,
+            "cacheCreationInputTokens": 30317,
+            "webSearchRequests": 0,
+            "costUSD": 0.2689148,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 364,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2720622
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14848,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29381,
+            "outputTokens": 338,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031071000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 308,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 937,
+            "cacheReadInputTokens": 71717,
+            "cacheCreationInputTokens": 30285,
+            "webSearchRequests": 0,
+            "costUSD": 0.2753874,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 156,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2784945
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 41562,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21648,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021758000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 3748,
+            "cacheReadInputTokens": 31697,
+            "cacheCreationInputTokens": 40916,
+            "webSearchRequests": 0,
+            "costUSD": 0.40864340000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 3195,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.41081920000000005
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5454,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22440,
+            "outputTokens": 320,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024040000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 298,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 642,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21950,
+            "webSearchRequests": 0,
+            "costUSD": 0.0946607,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 236,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0970647
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14332,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22436,
+            "outputTokens": 239,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023631,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 214,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1411,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21942,
+            "webSearchRequests": 0,
+            "costUSD": 0.2046374,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 526,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2070005
+      }
+    ],
+    "total_cost_usd": 3.1584790000000003,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 54,
+      "gather": 251,
+      "triage": 8190,
+      "find_verify": 63879,
+      "merge": 9
+    },
+    "errors": []
+  }
+}

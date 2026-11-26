@@ -949,13 +949,8 @@ def record_root():
     return os.path.expanduser(env) if env else os.path.join(os.path.expanduser("~"), ".claude", "crew")
 
 
-def launch_identity(run_state):
-    """The launch values of the session that parks, or a refusal.
-
-    Return (identity, None) or (None, why). The identity holds name, handle,
-    terminal, group, model and worktree. Today the one source is the
-    orchestrator item's `launch`. A later source goes here, and nowhere else.
-    """
+def orch_launch(run_state):
+    """The orchestrator item's `launch`, read only. Return (launch, None) or (None, why)."""
     orch = run_state.get("orchestrator")
     if not isinstance(orch, dict) or not orch.get("name"):
         return None, "no orchestrator: a park needs run.orchestrator"
@@ -969,6 +964,20 @@ def launch_identity(run_state):
     launch = (item or {}).get("launch") or {}
     if not launch:
         return None, "the orchestrator item %s has no launch" % orch.get("item")
+    return launch, None
+
+
+def launch_identity(run_state):
+    """The launch values of the session that parks, or a refusal.
+
+    Return (identity, None) or (None, why). The identity holds name, handle,
+    terminal, group, model and worktree. Today the one source is the
+    orchestrator item's `launch`. A later source goes here, and nowhere else.
+    """
+    launch, why = orch_launch(run_state)
+    if why:
+        return None, why
+    orch = run_state.get("orchestrator")
     if not launch.get("tab"):
         return None, "the orchestrator item %s has no launch.tab" % orch.get("item")
     if not launch.get("session_name"):
@@ -1070,20 +1079,47 @@ def cmd_park(argv):
     return out.finish()
 
 
+def park_holder(rec, park):
+    """Who holds the run after this park, read from the record now.
+
+    Return ("park", None) while run.park is still this park, ("woke", <id>)
+    when a wake ended it, with the id of the session that woke it, and
+    ("gone", None) otherwise.
+    """
+    try:
+        run_state = load_state(rec).get("run", {})
+    except (Usage, OSError, ValueError):
+        return "gone", None
+    now = run_state.get("park")
+    if isinstance(now, dict) and now.get("at") == park["at"] and now.get("from_session") == park["from_session"]:
+        return "park", None
+    mine = [p for p in run_state.get("parks") or [] if isinstance(p, dict) and p.get("at") == park["at"]
+            and p.get("from_session") == park["from_session"]]
+    woke = mine[-1].get("woke") if mine else None
+    if isinstance(woke, dict):
+        return "woke", woke.get("session_id")
+    return "gone", None
+
+
 def end_park(rec, park, failed, say):
-    """Move this park to run.parks with `failed`, and set run.park null. Only while it is this park."""
+    """Move this park to run.parks with `failed`, and set run.park null. Only while it is this park.
+
+    Return "moved", "gone" when the park was not this park any more, or "failed".
+    """
     entry = dict(park, failed=failed)
     conditions = park_conditions(park["at"], park["from_session"])
     moved = record(rec, "run", "append", "parks", json.dumps(entry), *conditions)
     if moved.returncode == NO_MATCH:
         say("%s ok rollback: the park is already gone" % utc_now())
-        return
+        return "gone"
     if moved.returncode != 0:
         say("%s FAIL rollback: %s" % (utc_now(), err(moved)))
-        return
+        return "failed"
     cleared = record(rec, "run", "set", "park", "null", *conditions)
     if cleared.returncode != 0:
         say("%s FAIL rollback: %s" % (utc_now(), err(cleared)))
+        return "failed"
+    return "moved"
 
 
 def cmd_park_helper(argv):
@@ -1105,11 +1141,36 @@ def cmd_park_helper(argv):
         else:
             log("FAIL", "stop", "the waiter %s: %s" % (waiter["tab"], err(stopped)))
 
+    def stop_old():
+        # Read the record again: a wake can come at any time before this stop.
+        held, woke_by = park_holder(rec, park)
+        if held == "woke" and woke_by == park.get("from_session"):
+            log("ok", "stop", "skipped, the old session %s woke the run" % woke_by)
+            return
+        if held == "gone":
+            log("ok", "stop", "skipped, the park is gone and no wake names who holds the run")
+            return
+        argv_stop = [sys.executable, LAUNCHER, "stop", identity["handle"], "--name", identity["name"]]
+        if park.get("from_session"):
+            argv_stop += ["--session-id", park["from_session"]]
+        stopped = run(argv_stop)
+        if stopped.returncode == 0:
+            log("ok", "stop", "the old session %s" % identity["handle"])
+        else:
+            log("FAIL", "stop", "the old session %s: %s" % (identity["handle"], err(stopped)))
+
     def fail(step, error, waiter=None):
         log("FAIL", step, error)
-        if waiter:
-            stop_waiter(waiter)
-        end_park(rec, park, {"step": step, "at": utc_now(), "error": error}, say)
+        ended = end_park(rec, park, {"step": step, "at": utc_now(), "error": error}, say)
+        if not waiter:
+            return
+        held, woke_by = park_holder(rec, park) if ended == "gone" else (None, None)
+        if held == "woke" and woke_by == waiter["session_id"]:
+            # The waiter woke the run first and holds it now: it stays, and the old session goes.
+            log("ok", "rollback", "skipped, the waiter %s woke the run" % waiter["session_id"])
+            stop_old()
+            return
+        stop_waiter(waiter)
 
     try:
         park_prompt = park["prompt"]
@@ -1148,8 +1209,6 @@ def cmd_park_helper(argv):
         log("ok", "window", "%s %s" % (waiter["tab"], waiter["session_id"]))
 
         woke_early = False
-        if os.environ.get("CREW_PARK_TEST_FAIL") == "waiter":
-            return fail("record", "the test switch CREW_PARK_TEST_FAIL=waiter", waiter)
         wrote = record(rec, "run", "set", "park.waiter", json.dumps(waiter),
                        *park_conditions(park["at"], park["from_session"]))
         if wrote.returncode == NO_MATCH:
@@ -1169,31 +1228,60 @@ def cmd_park_helper(argv):
         else:
             log("ok", "record", "run set park.waiter")
 
-        if orch:
+        if orch and woke_early:
+            # The waiter's own unpark writes its id and its tab into the item:
+            # one writer, so the item cannot end with two different tabs.
+            log("ok", "orch", "skipped, the waiter's unpark writes the item")
+        elif orch:
             for key in ("launch.tab", "launch.session_id"):
                 value = waiter["tab"] if key == "launch.tab" else waiter["session_id"]
                 done = orch_set(orch, key, value)
                 if done.returncode != 0:
-                    if woke_early:
-                        # The waiter runs the run now: stop neither session.
-                        log("FAIL", "orch", "%s: %s; the old session stays open" % (key, err(done)))
-                        return 0
                     return fail("orch", "%s: %s" % (key, err(done)), waiter)
                 log("ok", "orch", "set %s" % key)
 
         time.sleep(float(inputs.get("delay") or 0))
         log("ok", "wait", "%s seconds" % inputs.get("delay"))
-        argv_stop = [sys.executable, LAUNCHER, "stop", identity["handle"], "--name", identity["name"]]
-        if park.get("from_session"):
-            argv_stop += ["--session-id", park["from_session"]]
-        stopped = run(argv_stop)
-        if stopped.returncode == 0:
-            log("ok", "stop", "the old session %s" % identity["handle"])
-        else:
-            log("FAIL", "stop", "the old session %s: %s" % (identity["handle"], err(stopped)))
+        stop_old()
         return 0
     finally:
         say("%s end" % utc_now())
+
+
+def caller_tab(run_state, waiter, caller):
+    """The tab of the session that unparks. Return (handle, None) or (None, why).
+
+    The known waiter's tab is `run.park.waiter.tab`. Any other caller asks
+    `launcher.py find`. The old session and the waiter carry the same
+    session name, so a handle that the record gives to another session is
+    skipped: the waiter's tab, and the item's tab when the item names another
+    session id.
+    """
+    if isinstance(waiter, dict) and waiter.get("session_id") == caller and waiter.get("tab"):
+        return waiter["tab"], None
+    launch, why = orch_launch(run_state)
+    if why:
+        return None, why
+    if not launch.get("session_name"):
+        return None, "the item has no launch.session_name"
+    argv = [sys.executable, LAUNCHER, "find", launch["session_name"]]
+    if caller:
+        argv += ["--session-id", caller]
+    if launch.get("terminal"):
+        argv += ["--terminal", launch["terminal"]]
+    found = run(argv)
+    if found.returncode != 0:
+        return None, "launcher.py find failed: %s" % err(found)
+    others = set()
+    if isinstance(waiter, dict) and waiter.get("session_id") != caller and waiter.get("tab"):
+        others.add(waiter["tab"])
+    if launch.get("tab") and launch.get("session_id") != caller:
+        others.add(launch["tab"])
+    for line in found.stdout.splitlines():
+        fields = line.split()
+        if fields and fields[0] not in others:
+            return fields[0], None
+    return None, "launcher.py find printed no tab of this session"
 
 
 def cmd_unpark(argv):
@@ -1238,15 +1326,16 @@ def cmd_unpark(argv):
     orch = run_state.get("orchestrator")
     if not orch:
         out.ok("orch", "skipped, no orchestrator")
-    elif is_waiter:
-        out.ok("orch", "skipped, the waiter is this session")
     else:
-        for key, value in (("launch.session_id", caller), ("launch.tab", None)):
+        tab, why = caller_tab(run_state, waiter, caller)
+        for key, value in (("launch.session_id", caller), ("launch.tab", tab)):
             done = orch_set(orch, key, value)
-            if done.returncode == 0:
-                out.ok("orch", "set %s" % key)
-            else:
+            if done.returncode != 0:
                 out.fail("orch", "%s: %s" % (key, err(done)))
+            elif key == "launch.tab" and value is None:
+                out.ok("orch", "set launch.tab null: no tab found, %s" % why)
+            else:
+                out.ok("orch", "set %s" % key)
     out.ok("unpark", "run.park moved to run.parks")
     return out.finish()
 

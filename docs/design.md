@@ -10680,7 +10680,7 @@ Deliberately different:
       in the run's record, `evidence/wakes.py` and `evidence/wake-cost.md`.
     - **Unexercised.** Only the seeded tests ran the park.
 
-169. **iTerm2 types a short line, and a launch checks for `claude` —
+169. **iTerm2 types a short line, and an iTerm2 launch checks for `claude` —
     2026-11-25, `launcher.py`, jerridan/crew#192.**
     On iTerm2, `launcher.py` typed the whole start command into the new tab.
     When the shell was not ready, the tty was in line mode, and macOS keeps
@@ -10689,7 +10689,8 @@ Deliberately different:
     still exited 0, and `crew-orch.py launch` waited and printed a
     `goal-wait` line that blamed the trust dialog. `start`, `resume` and
     `window` all had the defect. tmux and Herdr pass the command as an
-    argument and type nothing, so they did not. Now the launcher writes the
+    argument and type nothing, so they did not, and they run no process check.
+    Now the launcher writes the
     command to a 0600 file in `/tmp` that removes itself first, and types
     one short line that sources it, through the helper and through the
     `osascript` fallback. It then waits until a `claude` process runs on the

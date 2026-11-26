@@ -521,9 +521,11 @@ file of `$CLAUDE_CODE_SESSION_ID`. It stores the start output in `launch`,
 writes `pace.slots.busy` one higher, and records `--goal-file` as the first
 `told` entry. Then it waits up to `--wait-seconds` (60 by default) for a
 session file that names the implementer. It prints the launcher line, then
-`goal-ready: <session name>` or `goal-wait: <reason>`. `goal-wait` means that
-a `claude` process started in the tab and has not registered, for example
-while the trust dialog waits. When `launcher.py` exits 10 (no `claude`
+`goal-ready: <session name>` or `goal-wait: <reason>`. On iTerm2,
+`goal-wait` means that a `claude` process runs in the tab and has not
+registered, for example while the trust dialog waits. On tmux and Herdr, the
+launcher does not check for the process, so `goal-wait` says only that no
+session has registered. When `launcher.py` exits 10 (no `claude`
 process started on iTerm2), `launch` fails with exit 1 and the launcher line,
 and prints no `goal-wait`. The orchestrator sends
 the goal on `goal-ready`.

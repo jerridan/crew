@@ -12,6 +12,8 @@ includes the project lead's own session and the IC teammates (design §8,
 **The run's own sessions are the window.** `run.session_ids` in `state.json`
 names them, and `run.review_session_ids` names each headless skeptical review
 the run started (`review-runner.md`'s "Record the review's session id").
+`run.park.waiter` and each `run.parks[].waiter` name the waiter session of a
+park (`park.md`).
 Claude Code writes each session as `<session-id>.jsonl` with its subagents
 and its in-process teammates under `<session-id>/`. So a run is priced by
 that subtree, wherever it sits under `~/.claude/projects/` (and
@@ -168,6 +170,22 @@ def teammate_files(session_ids, roots: list[Path], since: float) -> list[Path]:
     return found
 
 
+def waiter_ids(run: dict) -> list:
+    """The session id of the waiter of `run.park` and of each `run.parks` entry.
+
+    A waiter is a session of the run that `crew-step.py park` started, so it
+    is this run's cost. Its id never goes in `run.session_ids`, and another
+    session can stop it, so this is the only place that names it.
+    """
+    parks = [run.get("park")] + (run.get("parks") if isinstance(run.get("parks"), list) else [])
+    found = []
+    for park in parks:
+        waiter = park.get("waiter") if isinstance(park, dict) else None
+        if isinstance(waiter, dict) and isinstance(waiter.get("session_id"), str):
+            found.append(waiter["session_id"])
+    return found
+
+
 def run_files(state: dict) -> list[Path]:
     """The transcripts of this run's own sessions, or an empty list.
 
@@ -175,8 +193,9 @@ def run_files(state: dict) -> list[Path]:
     `run.review_session_ids` and never in `run.session_ids`: the `SessionEnd`
     hook reads the latter and would mark the whole run interrupted when the
     review ended (design §15.90h, §15.94c). It is still this run's cost, so it
-    is priced here. So is each split-pane teammate a lead session spawned,
-    found by its team name (design §15.102).
+    is priced here. So is the waiter of each park (`waiter_ids`), and each
+    split-pane teammate a lead session spawned, found by its team name
+    (design §15.102). Each id is priced once.
     """
     run = state.get("run")
     run = run if isinstance(run, dict) else {}
@@ -185,6 +204,8 @@ def run_files(state: dict) -> list[Path]:
         value = run.get(key)
         if isinstance(value, list):
             ids.extend(value)
+    ids.extend(waiter_ids(run))
+    ids = list(dict.fromkeys(i for i in ids if isinstance(i, str)))
     roots = project_roots()
     files = session_files(ids, roots)
     if not files:

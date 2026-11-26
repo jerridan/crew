@@ -211,7 +211,7 @@ answers that dialog. Its status line waits too.
   another wait, in seconds: a positive integer or decimal, such as `90` or
   `2.5`. An absent variable gives 60. Any other value, an empty one included,
   exits 2 before a worktree or a tab exists. Each read has a timeout of the
-  time that is left, and the tab close has 10 seconds. `start` prints its
+  time that is left, and at least 1 second. The tab close has 10 seconds. `start` prints its
   JSON line and exits 0 only when that process is there. Otherwise:
   - No `claude` process in the wait: the launcher closes the tab, removes the
     file, keeps the worktree, and exits 10. One line on stderr names the tab,

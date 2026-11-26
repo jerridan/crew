@@ -26,12 +26,13 @@ LIVE_STATES = ("active", "blocked")
 
 # A park (`crew-step.py park`) ends the project lead's session on purpose,
 # and a waiter session takes the run over. The end of the session that
-# parked is not a death: it is retired. A session is retired when it is the
-# `from_session` of a `run.parks` entry that a different session woke. A park
-# that failed has no `woke`, so its session stays live. While `run.park` is
-# set, the run is not live at all: no session of it builds.
+# parked is not a death: it is retired. While `run.park` is set, its
+# `from_session` is retired. After the park ends, a session is retired when it
+# is the `from_session` of a `run.parks` entry that a different session woke.
+# A park that failed has no `woke`, so its session stays live.
 def is_retired(run: dict, session_id: str) -> bool:
-    if isinstance(run.get("park"), dict):
+    park = run.get("park")
+    if isinstance(park, dict) and park.get("from_session") == session_id:
         return True
     for entry in run.get("parks") or []:
         if not isinstance(entry, dict) or entry.get("from_session") != session_id:
@@ -40,6 +41,17 @@ def is_retired(run: dict, session_id: str) -> bool:
         if isinstance(woke, dict) and woke.get("session_id") not in (None, session_id):
             return True
     return False
+
+
+# The waiter of the park that holds the run now. Its id is not in
+# `run.session_ids`, but while that park holds, the waiter is the one session
+# of the run, so its end is the death of the run.
+def park_waiter_id(run: dict):
+    park = run.get("park")
+    if not isinstance(park, dict):
+        return None
+    waiter = park.get("waiter")
+    return waiter.get("session_id") if isinstance(waiter, dict) else None
 
 
 def is_live(run: dict) -> bool:
@@ -111,7 +123,7 @@ def interrupt_run(state_path: Path, session_id: str) -> bool:
         fcntl.flock(lock, fcntl.LOCK_EX)
         state = read_json(state_path)
         run = state.get("run") or {}
-        if session_id not in run.get("session_ids", []):
+        if session_id not in run.get("session_ids", []) and session_id != park_waiter_id(run):
             return False
         if not is_live(run) or is_retired(run, session_id):
             return False

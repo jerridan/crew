@@ -1090,6 +1090,14 @@ if args[0] == "window":
     print(json.dumps({"session_name": opt("--name"), "model": opt("--model", "opus"),
                       "terminal": opt("--terminal", "tmux"), "tab": "%s",
                       "tab_group": opt("--group"), "session_id": "%s", "cwd": opt("--cwd")}))
+if args[0] == "find":
+    code = int(os.environ.get("STUB_FIND_EXIT", "0"))
+    if code:
+        sys.stderr.write("launcher: ps failed\\n")
+        sys.exit(code)
+    for line in os.environ.get("STUB_FIND_OUT", "").split("|"):
+        if line:
+            print(line)
 sys.exit(0)
 """ % (WAITER_TAB, WAITER)
 
@@ -1101,7 +1109,9 @@ if code:
 print(%r)
 """ % SETTINGS_OUT
 
-ORCH_STUB = CALL_LOG + """log("orch")
+ORCH_STUB = CALL_LOG + """import time
+time.sleep(float(os.environ.get("STUB_ORCH_SLEEP", "0")))
+log("orch")
 fail = os.environ.get("STUB_ORCH_FAIL_ON")
 if fail and fail in " ".join(sys.argv[1:]):
     sys.stderr.write("crew-orch: stub failure\\n")
@@ -1196,6 +1206,28 @@ def opt_of(argv, name):
 
 def run_of(rec):
     return state(rec)["run"]
+
+
+def wait_waiter(rec, seconds=20):
+    """Wait until the helper has written run.park.waiter. Return True when it came."""
+    stop_at = time.time() + seconds
+    while time.time() < stop_at:
+        if ((run_of(rec).get("park") or {}).get("waiter") or {}).get("session_id"):
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def finds(logd):
+    return [c[1:] for c in calls(logd, "launcher") if c[1] == "find"]
+
+
+def orch_sets(logd):
+    return [c[1:] for c in calls(logd, "orch")]
+
+
+def item_set(key, value):
+    return ["--orch", ORCH_NAME, "item", ITEM, "set", key, json.dumps(value)]
 
 
 PARK_KEYS = {"reason", "by", "at", "until", "next", "from_session", "prompt", "waiter"}
@@ -1309,11 +1341,28 @@ took = time.time() - began
 check("park with --delay 2 returns at once, before any stop", rc == 0 and took < 1.5 and not stops(logd))
 check("the helper stops the old session after the delay", wait_helper(rec) and len(stops(logd)) == 1)
 
+# A wake during the delay: the helper reads the record again before it stops the old session.
+d, repo, rec, logd = seed_park("park-delay-old-woke")
+rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "3")
+got_waiter = wait_waiter(rec)
+rc2, out2, err2 = unpark(rec, logd, session=OLD, STUB_FIND_OUT=OLD_TAB + " name")
+wait_helper(rec)
+check("the old session unparks during the delay: the helper stops nothing more, and logs it",
+      rc == 0 and got_waiter and rc2 == 0 and stops(logd) == [["stop", WAITER_TAB, "--session-id", WAITER]]
+      and any(" ok stop: skipped" in x and OLD in x for x in park_log(rec)))
+d, repo, rec, logd = seed_park("park-delay-waiter-woke")
+rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "3")
+got_waiter = wait_waiter(rec)
+rc2, out2, err2 = unpark(rec, logd, session=WAITER)
+wait_helper(rec)
+check("the waiter unparks during the delay: the helper still stops the old session",
+      rc == 0 and got_waiter and rc2 == 0 and stops(logd) == [["stop", OLD_TAB, "--name", "pl-1", "--session-id", OLD]])
+
 
 # Failures roll the park back: the old session stays, no stop of it.
-def rolled_back(label, name, step_name, waiter_stopped, **extra):
+def rolled_back(label, name, step_name, waiter_stopped, script=SP, **extra):
     d, repo, rec, logd = seed_park(name)
-    rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "0", **extra)
+    rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "0", script=script, **extra)
     ended = wait_helper(rec)
     r = run_of(rec)
     last = (r.get("parks") or [{}])[-1]
@@ -1332,7 +1381,33 @@ logd = rolled_back("a failed window", "park-fail-window", "window", False, STUB_
 check("a failed window: no orchestrator write", not calls(logd, "orch"))
 logd = rolled_back("a failed settings call", "park-fail-settings", "settings", False, STUB_USAGE_EXIT="1")
 check("a failed settings call: no window", not windows(logd))
-rolled_back("a failed waiter write", "park-fail-waiter", "record", True, CREW_PARK_TEST_FAIL="waiter")
+rolled_back("a failed waiter write", "park-fail-waiter", "record", True, script=SP_WRAP,
+            STUB_RECORD_FAIL="set park.waiter")
+
+# The OSError path of the call: <record>/park is a plain file, so the helper cannot start.
+d, repo, rec, logd = seed_park("park-fail-helper")
+write(os.path.join(rec, "park"), "not a directory\n")
+rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "0")
+r = run_of(rec)
+last = (r.get("parks") or [{}])[-1]
+check("an OSError at the helper start exits 1 with FAIL helper, run.park null and failed.step helper",
+      rc == 1 and has(out, "FAIL helper:") and r.get("park") is None
+      and (last.get("failed") or {}).get("step") == "helper" and last.get("from_session") == OLD
+      and not calls(logd))
+
+# The waiter woke the run before a failed orch write: no rollback, the waiter stays, the old session stops.
+d, repo, rec, logd = seed_park("park-fail-orch-woke")
+rc, out, err = park(rec, logd, "--reason", "usage", "--next", NEXT, "--delay", "0",
+                    STUB_ORCH_FAIL_ON="launch.tab", STUB_ORCH_SLEEP="2")
+got_waiter = wait_waiter(rec)
+rc2, out2, err2 = unpark(rec, logd, session=WAITER)
+wait_helper(rec)
+r = run_of(rec)
+check("a failed orch write after the waiter woke: the waiter is not stopped, the old session is",
+      rc == 0 and got_waiter and rc2 == 0 and stops(logd) == [["stop", OLD_TAB, "--name", "pl-1", "--session-id", OLD]])
+check("a failed orch write after the waiter woke: run.parks holds one woke entry and no failed one",
+      r.get("park") is None and len(r.get("parks") or []) == 1 and "failed" not in r["parks"][0]
+      and r["parks"][0]["woke"]["session_id"] == WAITER)
 rolled_back("a failed launch.tab write", "park-fail-tab", "orch", True, STUB_ORCH_FAIL_ON="launch.tab")
 rolled_back("a failed launch.session_id write", "park-fail-sid", "orch", True, STUB_ORCH_FAIL_ON="launch.session_id")
 
@@ -1340,15 +1415,17 @@ rolled_back("a failed launch.session_id write", "park-fail-sid", "orch", True, S
 d, repo, rec, logd = seed_park("park-race-waiter")
 rc, out, err = park(rec, logd, "--reason", "pause", "--by", "ann", "--next", NEXT, "--delay", "0",
                     STUB_WINDOW_SLEEP="2")
-rc2, out2, err2 = unpark(rec, logd, "--by", "resume word", session=WAITER, STUB_WINDOW_SLEEP="2")
+rc2, out2, err2 = unpark(rec, logd, "--by", "resume word", session=WAITER, STUB_WINDOW_SLEEP="2",
+                         STUB_FIND_OUT=OLD_TAB + " name|" + WAITER_TAB + " name")
 check("the waiter's early unpark exits 0 and clears run.park", rc == 0 and rc2 == 0 and run_of(rec).get("park") is None)
 check("the helper ends", wait_helper(rec))
 r = run_of(rec)
 check("after the early wake the helper writes no run.park and no waiter into it",
       r.get("park") is None and len(r.get("parks") or []) == 1 and r["parks"][0].get("waiter") is None)
-check("after the early wake the orchestrator item gets the waiter's tab and id",
-      ["--orch", ORCH_NAME, "item", ITEM, "set", "launch.tab", json.dumps(WAITER_TAB)] in [c[1:] for c in calls(logd, "orch")]
-      and ["--orch", ORCH_NAME, "item", ITEM, "set", "launch.session_id", json.dumps(WAITER)] in [c[1:] for c in calls(logd, "orch")])
+check("after the early wake the waiter's unpark is the one writer of the item: the waiter's id and tab",
+      orch_sets(logd) == [item_set("launch.session_id", WAITER), item_set("launch.tab", WAITER_TAB)])
+check("the early unpark finds the tab by the session name, the caller's id and the terminal",
+      finds(logd) == [["find", "pl-1", "--session-id", WAITER, "--terminal", "tmux"]])
 check("after the early wake the stop still targets the old session, and only it",
       stops(logd) == [["stop", OLD_TAB, "--name", "pl-1", "--session-id", OLD]])
 
@@ -1378,7 +1455,8 @@ rc, out, err = unpark(os.path.join(T, "no-such-record"), logd)
 check("unpark with no record exits 1", rc == 1)
 
 d, repo, rec, logd = seed_park("unpark-foreign", run={"park": PARK_OBJ})
-rc, out, err = unpark(rec, logd, "--by", "resume word", session=OLD)
+rc, out, err = unpark(rec, logd, "--by", "resume word", session=OLD,
+                      STUB_FIND_OUT=WAITER_TAB + " name|" + OLD_TAB + " name")
 r = run_of(rec)
 last = (r.get("parks") or [{}])[-1]
 woke = last.get("woke") or {}
@@ -1387,16 +1465,23 @@ check("unpark moves the park to run.parks with woke and sets run.park null",
       and {k: v for k, v in last.items() if k != "woke"} == PARK_OBJ
       and woke.get("by") == "resume word" and woke.get("session_id") == OLD and bool(woke.get("at")))
 check("unpark by another session stops the waiter by its id", stops(logd) == [["stop", WAITER_TAB, "--session-id", WAITER]])
-check("unpark by another session writes its own id and a null tab into the item",
-      [c[1:] for c in calls(logd, "orch")] == [
-          ["--orch", ORCH_NAME, "item", ITEM, "set", "launch.session_id", json.dumps(OLD)],
-          ["--orch", ORCH_NAME, "item", ITEM, "set", "launch.tab", "null"]])
+check("unpark by another session finds its tab, skips the waiter's tab, and writes its id and tab",
+      finds(logd) == [["find", "pl-1", "--session-id", OLD, "--terminal", "tmux"]]
+      and orch_sets(logd) == [item_set("launch.session_id", OLD), item_set("launch.tab", OLD_TAB)])
+
+for label, extra in (("prints no line", {"STUB_FIND_OUT": ""}), ("fails", {"STUB_FIND_EXIT": "6"})):
+    d, repo, rec, logd = seed_park("unpark-nofind-" + label.split()[0], run={"park": PARK_OBJ})
+    rc, out, err = unpark(rec, logd, session=OLD, **extra)
+    check("unpark when find %s writes a null tab with an ok orch line that says so" % label,
+          rc == 0 and orch_sets(logd) == [item_set("launch.session_id", OLD), item_set("launch.tab", None)]
+          and any(x.startswith("ok orch: set launch.tab null") and "no tab" in x for x in lines(out)))
 
 d, repo, rec, logd = seed_park("unpark-self", run={"park": PARK_OBJ})
 rc, out, err = unpark(rec, logd, session=WAITER)
-check("the waiter's own unpark moves the park, stops nothing and writes nothing to the item",
+check("the waiter's own unpark moves the park, stops nothing and writes the waiter's id and tab",
       rc == 0 and run_of(rec).get("park") is None and run_of(rec)["parks"][-1]["woke"]["session_id"] == WAITER
-      and not stops(logd) and not calls(logd, "orch"))
+      and not stops(logd) and not finds(logd)
+      and orch_sets(logd) == [item_set("launch.session_id", WAITER), item_set("launch.tab", WAITER_TAB)])
 
 d, repo, rec, logd = seed_park("unpark-no-waiter", run={"park": dict(PARK_OBJ, waiter=None)})
 rc, out, err = unpark(rec, logd, session=OLD)
@@ -1444,14 +1529,14 @@ for reason in ("usage", "pause", "question"):
           rc == 0 and ended and seq == ["window", "stop"])
     check("drill %s: stop targets session A, the old session" % reason,
           stops(logd) == [["stop", OLD_TAB, "--name", "pl-1", "--session-id", OLD]])
-    before_unpark = len(calls(logd))
+    before_unpark = len(stops(logd))
     rc, out, err = unpark(rec, logd, "--by", "the wake", session=WAITER)
     r = run_of(rec)
     check("drill %s: unpark as the waiter clears run.park and run.parks holds the park with woke" % reason,
           rc == 0 and r.get("park") is None and len(r.get("parks") or []) == 1
           and r["parks"][0].get("reason") == reason and r["parks"][0].get("woke", {}).get("session_id") == WAITER)
     check("drill %s: no stop targeted the waiter" % reason,
-          not any(WAITER in c or WAITER_TAB in c for c in stops(logd)) and len(calls(logd)) == before_unpark)
+          not any(WAITER in c or WAITER_TAB in c for c in stops(logd)) and len(stops(logd)) == before_unpark)
     check("drill %s: every seeded fact is unchanged on disk" % reason, snapshot(rec) == seeded)
 
 
@@ -1462,6 +1547,7 @@ src_lines = text.splitlines()
 force = [x for x in src_lines if "--force" in x]
 check("R17 --force appears only on the probe line", bool(force) and all("probe" in x for x in force))
 check("R19 no Skill call in the script", bool(text) and "Skill" not in text)
+check("no test switch CREW_PARK_TEST_FAIL in the script", bool(text) and "CREW_PARK_TEST_FAIL" not in text)
 check("R19 no open() of the body file", bool(text) and not any("open(" in x and "body" in x for x in src_lines))
 write_open = re.compile(r"""open\([^)]*["'][wax]b?\+?["']""")
 writes = [x for x in src_lines if write_open.search(x) or ".write_text(" in x or ".write_bytes(" in x]

@@ -24,7 +24,7 @@ investigation paths.
 | The wait | What you do |
 |---|---|
 | `stopped` at the usage limit, or a pause message for the usage window | Do steps 1 to 4 of `autonomy-contract.md`'s "The usage limit line". Then arm `crew-usage.py wait`. A project lead parks with `--reason usage` and `--until <reset epoch>` when the reset is more than 30 minutes away. Otherwise it waits in place. |
-| A pause or stop message from the orchestrator | Commit. Then park with `--reason pause --by <orchestrator name>` at once, whatever the length. When the pause is for the usage window, arm `wait` first and pass `--until`. |
+| A pause or stop message from the orchestrator | Commit. Then park with `--reason pause --by <the principal's name>` at once, whatever the length. The principal's name is `run.principal`. With an orchestrator, that is the orchestrator. When the pause is for the usage window, arm `wait` first and pass `--until`. |
 | An escalation, sent | When no IC works and no background task the run needs is armed, arm a background timer of 30 minutes. An answer before it ends goes on in place. When the timer exits, park with `--reason question`. |
 
 **Never park while an IC works or a worktree is dirty.** An IC dies with the
@@ -42,7 +42,8 @@ line says, and wait for its report.
    step the resumed run takes first.
 5. On exit 0, end your turn. The helper starts the waiter, then stops this
    session after its delay. A wake during that delay is safe: the helper
-   publishes the waiter only while the park is still its own.
+   reads the record again before each write and each stop, as
+   `crew-step.md` says.
 6. On exit 1, read the line. Nothing was parked. Fix the cause or wait in
    place.
 
@@ -58,22 +59,28 @@ directory and the goal slug and nothing else.
 2. When `run.park.reason` is `usage`, or is `pause` for the usage window, and
    the charter has a `Usage limit:` line, arm `crew-usage.py wait` as a
    background Bash command.
-3. Wait. A message or typed text wakes you only as the table says.
+3. When `run.park.until` is set, and `crew-usage.py wait` exits 1 or the
+   charter has no `Usage limit:` line, arm a background timer that ends at
+   that epoch: `sleep $(( <until> - $(date +%s) ))`. A time in the past
+   ends the timer at once.
+4. Wait. A message or typed text wakes you only as the table says.
 
 | `run.park.reason` | What wakes the run |
 |---|---|
 | `usage` | `crew-usage.py wait` exits 0, or a resume word from the principal |
 | `pause` | a resume word from the principal, or `wait` exits 0 when the pause was for the usage window |
 | `question` | a message that answers the open question |
+| any reason, with `run.park.until` set | the timer of step 3 exits |
 
 **Only exit 0 of `wait` is a reset.** Exit 1 means no usage figures exist.
-Stay parked, say in one line that you wait for a word, and wait for one.
+Arm the timer of step 3 when `run.park.until` is set. Else stay parked, say
+in one line that you wait for a word, and wait for one.
 
 **Any other message keeps you parked.** A `rejoin` after an orchestrator
 restart is one, and so is a status request, and so is a pause or stop word.
-Answer in one line from the record: the stage, the park reason and the open
-question. Re-arm `wait` when the reason needs one and none runs. Do not
-resume.
+Answer in one line from the record: the stage, the park reason, the until
+time when `run.park.until` is set, and the open question. Re-arm `wait` or
+the timer when the reason needs one and none runs. Do not resume.
 
 ## The wake
 

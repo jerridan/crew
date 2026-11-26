@@ -260,7 +260,7 @@ reads that file and never writes it.
 |---|---|
 | `park` | Refuses the park with `FAIL park: <why>` and exit 1, and writes nothing. The refusals: no `state.json`; a `run.park` already set; no `run.orchestrator`; an orchestrator record or item that cannot be read, or an item with no `launch.tab` or no `launch.session_name`; a `run.repo` that is not the item's `launch.worktree`; a `git status --porcelain` in `run.checkout` (else `run.repo`) that prints a line. An untracked file counts. |
 | `record` | `crew-record.py run set park <json>`, with the fields of `record-format.md`'s `park` row. `from_session` is `$CLAUDE_CODE_SESSION_ID`. `prompt` is `<record-dir>/park/prompt-<n>.md`, where `<n>` counts parks from 1. |
-| `helper` | Starts the helper in a new process session, with its output in `<record-dir>/park/park.log`. The line is `ok helper: started pid <pid>, log <path>`. |
+| `helper` | Starts the helper in a new process session, with its output in `<record-dir>/park/park.log`. The line is `ok helper: started pid <pid>, log <path>`. When the `park/` directory, the log or the start fails, the line is `FAIL helper: <error>`, and the park moves to `run.parks` with `failed.step` `helper`. |
 
 **The helper.** It writes one line per step to `park/park.log`, as `<UTC
 time> ok|FAIL <step>: <detail>`, and the line `<UTC time> end` last.
@@ -273,13 +273,17 @@ time> ok|FAIL <step>: <detail>`, and the line `<UTC time> end` last.
 | `record` | `crew-record.py run set park.waiter <json> --if park.at=<json> --if park.from_session=<json>`. `waiter` is `{name, session_id, tab, terminal, tab_group, model, started_at}`, from the launcher's output. |
 | `orch` | `crew-orch.py --orch <name> item <item> set launch.tab <json>`, then `set launch.session_id <json>`, with the waiter's values. One line per call. |
 | `wait` | Waits `--delay` seconds. |
-| `stop` | `launcher.py stop <launch.tab> --name <name> --session-id <from_session>`. The launcher matches either flag only on that tab, so the waiter, with the same name in another tab, is never the target. |
+| `stop` | Reads the record again first. It stops the old session only while `run.park` is still this park, or when the park's `run.parks` entry has a `woke.session_id` that is not `from_session`. The stop is `launcher.py stop <launch.tab> --name <name> --session-id <from_session>`. The launcher matches either flag only on that tab, so the waiter, with the same name in another tab, is never the target. When the old session woke the run, or the park is gone with no `woke`, the line is `ok stop: skipped, <why>` and nothing stops. |
 
 **A failure rolls the park back.** A failed `prompt`, `settings`, `window`,
-`record` or `orch` step stops the sequence. When the waiter started, the
-helper stops it with `launcher.py stop <waiter tab> --session-id <waiter
-id>`. Then it appends the park to `run.parks` with `failed: {step, at,
-error}`, and sets `run.park` to `null`. Your session is not stopped.
+`record` or `orch` step stops the sequence. The helper appends the park to
+`run.parks` with `failed: {step, at, error}`, and sets `run.park` to `null`,
+both only while `run.park` is still this park. When the waiter started, the
+helper then stops it with `launcher.py stop <waiter tab> --session-id <waiter
+id>`. Your session is not stopped. One exception: when the waiter woke the
+run before the rollback, the helper writes no `failed` entry, keeps the
+waiter, logs `ok rollback: skipped, the waiter <id> woke the run`, and runs
+the `stop` step.
 `park.md` says what to arm before the call, for this case.
 
 **A wake before the waiter write.** The `record` step writes only while
@@ -287,13 +291,15 @@ error}`, and sets `run.park` to `null`. Your session is not stopped.
 not hold: a wake came first, and `unpark` moved the park. The helper reads
 the park's entry in `run.parks`:
 
-- The waiter woke it: the helper writes no waiter, then runs `orch`, `wait`
-  and `stop` as usual. A failed `orch` call then stops neither session.
+- The waiter woke it: the helper writes no waiter and skips `orch`, with the
+  line `ok orch: skipped, the waiter's unpark writes the item`. The waiter's
+  `unpark` is then the one writer of the item. The helper runs `wait` and
+  `stop` as usual.
 - Another session woke it: the helper stops the waiter and stops nothing
   else.
 
-The exit code of the call is 0 when the helper started, 1 for a refusal or a
-failed `record`, and 2 for a usage error. The helper's own result is in
+The exit code of the call is 0 when the helper started, 1 for a refusal, a
+failed `record` or a failed `helper`, and 2 for a usage error. The helper's own result is in
 `park.log` only.
 
 ## unpark
@@ -310,7 +316,7 @@ prints `FAIL unpark` and exits 1.
 |---|---|
 | `record` | `crew-record.py run append parks <json>`, then `run set park null`. The entry is `run.park` plus `woke: {at, by, session_id}`, where `by` is the `--by` value or `null`, and `session_id` is `$CLAUDE_CODE_SESSION_ID`. Both calls carry the `--if` pair of the helper's `record` step. A rerun after a failed second call finds the entry in `run.parks` and skips the append. |
 | `stop` | Stops the waiter with `launcher.py stop <waiter.tab> --session-id <waiter.session_id>`. It is skipped when `run.park.waiter` is `null`, has no `tab`, or is this session. |
-| `orch` | With `run.orchestrator`, when this session is not the waiter: `crew-orch.py --orch <name> item <item> set launch.session_id "<this session>"`, then `set launch.tab null`. The orchestrator then finds the tab by the session name. Skipped for the waiter itself. |
+| `orch` | With `run.orchestrator`: `crew-orch.py --orch <name> item <item> set launch.session_id "<this session>"`, then `set launch.tab <tab>`. For the waiter of `run.park.waiter`, `<tab>` is `waiter.tab`. For any other session, the call runs `launcher.py find <launch.session_name> --session-id <this session> [--terminal <launch.terminal>]`, with the values of the orchestrator item, which it reads and never writes. `<tab>` is the first handle that find prints, less two handles of other sessions: `waiter.tab` when the waiter is another session, and the item's `launch.tab` when the item's `launch.session_id` is another session. When find fails or prints no such handle, `<tab>` is `null`, and the line is `ok orch: set launch.tab null: no tab found, <why>`. |
 | `unpark` | `ok unpark: run.park moved to run.parks`. |
 
 The exit code is 1 when a step failed, and 2 for a usage error.

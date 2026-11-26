@@ -62,8 +62,9 @@ A park (`park.md`) writes two fields of your item, through `crew-orch.py
 waiter. The orchestrator reaches the waiter by the same session name, so its
 messages, its pause word and its resume word work as before. After a machine
 restart, `crew-orch.py resume` resumes the waiter's conversation from
-`launch.session_id`. A waiter answers a `rejoin` message in one line and stays
-parked.
+`launch.session_id`. An unpark writes the same two fields for the session
+that resumes the run (`crew-step.md`). `park.md`'s "The waiter" says how a
+waiter answers each message.
 
 ## A new orchestrator name
 

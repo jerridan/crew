@@ -1,0 +1,1330 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 199,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Type a short line and check for claude on iTerm2 launches",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/199"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "a0738d04f711ba5e964f085bb58e4577ca208d91",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-199/2026-11-26T114134.194Z-a0738d0.json",
+      "open": [
+        "b299a740d679a307",
+        "c1786f850cf94e16"
+      ],
+      "dismissed": [
+        "82bdc446dbf29f81",
+        "ace3bb41d5c62bdf",
+        "d031db28c44b119b",
+        "dcd08d02b5acd12e"
+      ],
+      "fetch_failed": false
+    },
+    "base": "c61a4dda637b1b0891026abd05265bae6b49fdb9",
+    "head": "0918dd1153c121c2c76883093433883a4af5a0cc",
+    "started_at": "2026-11-26T12:10:48.331Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Type a short line and check for claude on iTerm2 launches\n\n## Summary\n\nOn iTerm2, the launcher typed the whole start command into a new tab. When the shell was not ready yet, macOS kept only the first 1024 bytes of that line, so a long command lost its end and no `claude` started, but `launcher.py start` still exited 0. Now the launcher writes the command to a private temporary file and types only a short line that runs it. It then waits until a `claude` process runs in the new tab. When none starts, the launcher closes the tab and exits with a new code, 10, so the orchestrator sees the real cause.\n\n**Ticket:** https://github.com/jerridan/crew/issues/192\n**Type:** Bug fix\n\nCloses jerridan/crew#192\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.140 (the orchestrator launcher), §15.167 (`--terminal` of `find` and `groups`), and the new §15.169, which records this finding.\n- `skills/orchestrator/references/launcher.md` owns the launcher interface: the typed line, the process check, `CREW_LAUNCHER_START_WAIT` and exit 10.\n- `skills/orchestrator/references/orchestrator-record.md` and `skills/orchestrator/SKILL.md` own what `crew-orch.py launch` prints, `goal-wait` included.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: on iTerm2, `start`, `resume` and `window` write the command to a 0600 file `/tmp/crew-launch-*.sh` that removes itself first. They type ` . '<file>'` through the helper and through the `osascript` fallback, and refuse a typed line over 1024 bytes with exit 6. They then wait for a `claude` process on the tab's tty: 60 s, or `CREW_LAUNCHER_START_WAIT`. With none, they close the tab, keep the worktree, write one stderr line and exit 10. A bad, empty or zero wait value exits 2 before any worktree or tab. Every read in the wait has a timeout, and the tab close has 10 s. One cleanup path removes the file and closes the tab on every failure after they exist.\n- `skills/orchestrator/scripts/crew-orch.py`, `skills/delivered-window/scripts/window-watch.py`: the launcher calls (launch, the resume of an item, the window launch) time out at 300 s, not 180 s, to fit the helper timeout plus the default wait.\n- `skills/orchestrator/scripts/test-launcher.sh`: cases for a command over 1024 bytes (helper and fallback), the file mode and content, a case that runs the typed line in a shell with a stub `claude`, the pass of the check for `start`, `resume` and `window`, the fail of the check (exit 10, one stderr line, tab closed, file gone), bad wait values, and the stubs that put a `claude` on the tab's tty.\n- `skills/orchestrator/scripts/test-crew-orch.sh`, `skills/delivered-window/scripts/test-window-watch.sh`: a launcher that exits 10, for `launch`, the item resume and the window launch, and the 300 s timeouts.\n- `skills/orchestrator/references/launcher.md`, `orchestrator-record.md`, `SKILL.md`: the typed line, the check, the wait, exit 10, and `goal-wait` now names only a session that started and has not registered.\n- `docs/design.md`: finding 169.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.137.\n\n### Constraints that applied\n\n- One rule lives in one file: `launcher.md` owns the new exit code and the wait. The other files point at it or state only their own output.\n- tmux and Herdr do not change: they pass the command as an argument, so they never had the defect, and the process check runs on iTerm2 only.\n- Item issue-193 (PR 194, merged first) owns `find`, `groups` and `find_handles`. This change does not change their behavior. It only adds an optional timeout argument to `processes` and `terminal_ttys`.\n- Python 3.9 or newer, standard library only, in `launcher.py`.\n- The version and the finding number came from the orchestrator.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`, `bash skills/orchestrator/scripts/test-crew-orch.sh` and `bash skills/delivered-window/scripts/test-window-watch.sh` pass on the rebased head. The red commit of `test-launcher.sh` failed 25 of 356 checks before the fix.\n- A live probe in iTerm2: `launcher.py window` with a cwd of about 600 bytes, so a command of about 1300 bytes, started a real `claude`, exited 0, and left no launch file. The same probe with a stub that is not a `claude` process exited 10, closed the tab and left no launch file.\n- A Codex spec critic and a Codex plan review ran before the code. Their findings and the adjudication are in the record.\n\n### Known gaps\n\n- No crew run has used the change yet. The live probe ran `window` only, not `start` or `resume`, which share the same code path.\n- One existing timing check of `test-window-watch.sh` (\"the cursor head followed the pushes\") failed once in three runs on this machine. This change does not touch that path.\n- A shell that cannot source a POSIX file with `.` would not start the command. zsh and bash accept it.\n\n<details><summary>Spec and decisions</summary>\n\nSpec: R1 a short typed line (at most 1024 bytes with its newline) that runs the full command from a 0600 file, which the command removes before claude starts. R2 a process check on the tab's tty, default 60 s or `CREW_LAUNCHER_START_WAIT`, exit 10 with the tab closed and the worktree kept. R3 the callers' timeouts above the helper timeout plus the wait. R4 the docs and one design finding. R5 the seeded tests.\n\nDecisions: the change path, not the light path, because the fix direction and the exit code needed a spec. The direction is the issue's first idea (a file) plus its third (the process check), because the file removes the cause and the check makes any other failure visible. The issue's second idea (shell integration) was not chosen, because it depends on the person's iTerm2 set-up. `resume` and `window` share the defect, because they type their command the same way, so they get the same fix. The Codex spec critic found 8 issues: 6 applied, 2 declined. The Codex plan review found 6: all applied.\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-window-watch.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/scripts/window-watch.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 13
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 14
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes launcher logic on iTerm2 (temp launch file, typed line, process polling, new exit code 10, tab closing, error handling) plus timeouts and a new env variable.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: iterm_launch (cleanup in except BaseException, exit code remap 10->6, e.line/e.args mutation)",
+        "skills/orchestrator/scripts/launcher.py: write_launch_file (/tmp 0600 file, self-removal, mkstemp, quoting in sourced line)",
+        "skills/orchestrator/scripts/launcher.py: wait_for_claude (tty lookup, timeouts, polling, is_claude match)",
+        "skills/orchestrator/scripts/launcher.py: start_wait (env validation, regex) and iterm_start warnings refactor",
+        "skills/orchestrator/scripts/launcher.py: close_new_tab and the 1024-byte typed-line check",
+        "skills/orchestrator/scripts/crew-orch.py and window-watch.py: LAUNCH_TIMEOUT 180->300 and handling of exit 10",
+        "skills/orchestrator/scripts/test-launcher.sh: stubs and cleanup of /tmp/crew-launch-*.sh"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "Core logic: launch file in /tmp, short typed line, claude process check, new exit 10, env var CREW_LAUNCHER_START_WAIT"
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "Launch timeout raised to 300 s via a constant for start and resume"
+        },
+        {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "note": "Launch timeout raised to 300 s via a constant"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "New tests and stubs for the typed line, process check, wait variable, and cleanup"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "Tests for exit 10 on launch and resume, and the timeout constant"
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-window-watch.sh",
+          "note": "Tests for exit 10 retry and the timeout constant"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.137"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.137"
+        },
+        {
+          "file": "README.md",
+          "note": "Documents CREW_LAUNCHER_START_WAIT"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 169"
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "Docs on goal-wait and exit 10/6 behavior"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Docs for typed line, process check, exit 10"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Docs for launch failure with exit 10/6"
+        }
+      ],
+      "summary": "On iTerm2, the launcher now writes the start command to a 0600 self-deleting file in /tmp and types a short line that sources it, which avoids the 1024-byte tty line limit. It then waits for a claude process on the new tab's tty. If none appears, it closes the tab and exits 10, or exits 6 when the tab doesn't close. It adds the CREW_LAUNCHER_START_WAIT variable, raises caller timeouts to 300 s, and updates docs and tests."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes launcher logic on iTerm2 (temp launch file, typed line, process polling, new exit code 10, tab closing, error handling) plus timeouts and a new env variable.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6398,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 17966,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0018096,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 289,
+              "cacheReadInputTokens": 10312,
+              "cacheCreationInputTokens": 17475,
+              "webSearchRequests": 0,
+              "costUSD": 0.14765040000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 98,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.14946
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1021,
+            "end_line": 1025,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The tty of the new tab is read once, right after the tab opens. If osascript does not list a tty for the session yet, the launch fails at once with exit 6 and closes the tab, without retrying during the wait.",
+            "evidence": "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)\n    if tty is None:\n        raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+            "suggested_fix": "Read the tty inside the polling loop. Fail only when no tty shows up before the deadline.",
+            "explanation": "A tab whose session iTerm2 has not listed yet, or whose tty it reports late, turns a launch that could work into a hard failure, even though the code waits up to 60 s for claude itself.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 57207,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 17976,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0018100999999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 10,
+              "outputTokens": 4825,
+              "cacheReadInputTokens": 147885,
+              "cacheCreationInputTokens": 32287,
+              "webSearchRequests": 0,
+              "costUSD": 0.384413,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 3604,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.38622310000000004
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8452,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 17966,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0018091,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 589,
+              "cacheReadInputTokens": 10222,
+              "cacheCreationInputTokens": 17475,
+              "webSearchRequests": 0,
+              "costUSD": 0.1536324,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 328,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1554415
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 22881,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46454,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046579,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 12,
+              "outputTokens": 2478,
+              "cacheReadInputTokens": 306631,
+              "cacheCreationInputTokens": 52664,
+              "webSearchRequests": 0,
+              "costUSD": 0.2661231,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1024,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.270781
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7404,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 17964,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0018089,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 477,
+              "cacheReadInputTokens": 10506,
+              "cacheCreationInputTokens": 17473,
+              "webSearchRequests": 0,
+              "costUSD": 0.1514332,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 105,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1532421
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 917,
+            "end_line": 936,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The timeout test wraps launcher.run and asserts the timeout keyword and the ps/ttys call shapes, which are internals.",
+            "evidence": "probes = [s for s in seen if s[0] == \"ps\" or s[1] == \"ttys\"]",
+            "suggested_fix": "Make the stub ps hang and assert the launcher exits 6 or 10 within a bound.",
+            "explanation": "The test breaks on a rename or reorder of internal calls while the observable behaviour stays the same. A stub ps or osascript that hangs and a check that the launcher exits within the bound would test the same behaviour.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8514,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 17960,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0018085,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 814,
+              "cacheReadInputTokens": 40035,
+              "cacheCreationInputTokens": 18030,
+              "webSearchRequests": 0,
+              "costUSD": 0.08427149999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 321,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08607999999999999
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 917,
+          "end_line": 936,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The timeout test wraps launcher.run and asserts the timeout keyword and the ps/ttys call shapes, which are internals.",
+          "evidence": "probes = [s for s in seen if s[0] == \"ps\" or s[1] == \"ttys\"]",
+          "suggested_fix": "Make the stub ps hang and assert the launcher exits 6 or 10 within a bound.",
+          "explanation": "The test breaks on a rename or reorder of internal calls while the observable behaviour stays the same. A stub ps or osascript that hangs and a check that the launcher exits within the bound would test the same behaviour.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "probes = [s for s in seen if s[0] == \"ps\" or s[1] == \"ttys\"]",
+            "launcher.run = run"
+          ],
+          "rationale": "The test does wrap launcher.run and checks call shapes. But the property under test is that each call has a timeout, and a black-box hang test would be slow and no more precise. The finding is a test-design preference with no wrong result for anyone.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "real = launcher.run",
+            "seen.append((cmd[0], cmd[2] if cmd[0] == \"osascript\" else \"\", kw.get(\"timeout\")))",
+            "probes = [s for s in seen if s[0] == \"ps\" or s[1] == \"ttys\"]",
+            "ok = rc == 10 and probes and all(t is not None and t <= 60 for _, _, t in probes)"
+          ],
+          "rationale": "The claim is correct: the test replaces `launcher.run` and checks the `timeout` keyword and the osascript argv position, which are internal details. But the file already tests the helper timeout the same way. The suggested fix, a hanging stub checked against a time bound, would need waits of up to 60 s per probe, so this is a style preference with no wrong result and not worth posting.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "real = launcher.run",
+            "seen.append((cmd[0], cmd[2] if cmd[0] == \"osascript\" else \"\", kw.get(\"timeout\")))",
+            "probes = [s for s in seen if s[0] == \"ps\" or s[1] == \"ttys\"]",
+            "ok = rc == 10 and probes and all(t is not None and t <= 60 for _, _, t in probes)"
+          ],
+          "rationale": "The claim is correct: the test replaces `launcher.run` and checks the `timeout` keyword and the osascript argv position, which are internal details. But the file already tests the helper timeout the same way. The suggested fix, a hanging stub checked against a time bound, would need waits of up to 60 s per probe, so this is a style preference with no wrong result and not worth posting.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1021,
+          "end_line": 1025,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The tty of the new tab is read once, right after the tab opens. If osascript does not list a tty for the session yet, the launch fails at once with exit 6 and closes the tab, without retrying during the wait.",
+          "evidence": "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)\n    if tty is None:\n        raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+          "suggested_fix": "Read the tty inside the polling loop. Fail only when no tty shows up before the deadline.",
+          "explanation": "A tab whose session iTerm2 has not listed yet, or whose tty it reports late, turns a launch that could work into a hard failure, even though the code waits up to 60 s for claude itself.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)\n    if tty is None:\n        raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))"
+          ],
+          "rationale": "The code reads the tty once before the polling loop and fails with TERMINAL_STEP at once if it is missing. It doesn't retry. A late-listed tty is plausible but unconfirmed, because a tab that has just opened usually has a tty.",
+          "score": 70,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)",
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+            "if len(parts) == 2 and ITERM_ID_RE.fullmatch(parts[0]):",
+            "why = close_new_tab(handle)"
+          ],
+          "rationale": "The claim is correct. `wait_for_claude` reads the tty once, before its polling loop. If the session is missing from the osascript list, or its tty is empty (then `parts` has one item and the row is skipped), the launch fails at once with TERMINAL_STEP and `iterm_launch` closes the tab, without retrying during the wait. The helper or osascript has already typed into the session at that point, so this race is probably rare, which puts it on an unusual path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)",
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+            "if len(parts) == 2 and ITERM_ID_RE.fullmatch(parts[0]):",
+            "why = close_new_tab(handle)"
+          ],
+          "rationale": "The claim is correct. `wait_for_claude` reads the tty once, before its polling loop. If the session is missing from the osascript list, or its tty is empty (then `parts` has one item and the row is skipped), the launch fails at once with TERMINAL_STEP and `iterm_launch` closes the tab, without retrying during the wait. The helper or osascript has already typed into the session at that point, so this race is probably rare, which puts it on an unusual path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6073922604,
+      "review_url": "https://github.com/jerridan/crew/pull/199#pullrequestreview-6073922604",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 139900837807
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1021,
+        "end_line": 1025,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The tty of the new tab is read once, right after the tab opens. If osascript does not list a tty for the session yet, the launch fails at once with exit 6 and closes the tab, without retrying during the wait.",
+        "evidence": "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)\n    if tty is None:\n        raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+        "suggested_fix": "Read the tty inside the polling loop. Fail only when no tty shows up before the deadline.",
+        "explanation": "A tab whose session iTerm2 has not listed yet, or whose tty it reports late, turns a launch that could work into a hard failure, even though the code waits up to 60 s for claude itself.",
+        "needs_context": true,
+        "fingerprint": "398c23c0e4aa8667",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle)",
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+            "if len(parts) == 2 and ITERM_ID_RE.fullmatch(parts[0]):",
+            "why = close_new_tab(handle)"
+          ],
+          "rationale": "The claim is correct. `wait_for_claude` reads the tty once, before its polling loop. If the session is missing from the osascript list, or its tty is empty (then `parts` has one item and the row is skipped), the launch fails at once with TERMINAL_STEP and `iterm_launch` closes the tab, without retrying during the wait. The helper or osascript has already typed into the session at that point, so this race is probably rare, which puts it on an unusual path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "deadline = time.monotonic() + wait rem = lambda: max(1, deadline - time.monotonic()) tty = dict(terminal_ttys(\"iterm2\", timeout=rem())).get(handle) if tty is None: raise Fail(TERMINAL_STEP, \"launcher: osascript lists no tty for the tab %s; %s\" % (handle, where))",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": "skills/delivered-window/scripts/test-window-watch.sh",
+        "start_line": 415,
+        "end_line": 415,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "high",
+        "claim": "The test greps the source file for the constant line, so it restates the code and checks no behaviour.",
+        "evidence": "chk 'the launch call of the watcher has a timeout of 300 seconds' \"$(grep -c '^LAUNCH_TIMEOUT = 300$' \"$here/window-watch.py\")\" 1",
+        "suggested_fix": "Drop it, or use a stub launcher that outlasts 180 s and check that the watcher still waits.",
+        "explanation": "It passes if the constant exists even when the subprocess call does not use it, and it breaks on a harmless change of the value or of the formatting.",
+        "needs_context": false,
+        "fingerprint": "b299a740d679a307",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "chk 'the launch call of the watcher has a timeout of 300 seconds' \"$(grep -c '^LAUNCH_TIMEOUT = 300$' \"$here/window-watch.py\")\" 1",
+            "LAUNCH_TIMEOUT = 300",
+            "done = subprocess.run(cmd, capture_output=True, text=True, timeout=LAUNCH_TIMEOUT)"
+          ],
+          "rationale": "The check is right: it greps the source for the constant line and does not run the subprocess call, so it would still pass if the call stopped using LAUNCH_TIMEOUT. Today the call does use the constant, so nothing is wrong now. A test of the real behaviour would need a stub that runs past 180 s, which is too slow for this suite, so the gap is minor.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "chk 'the launch call of the watcher has a timeout of 300 seconds' \"$(grep -c '^LAUNCH_TIMEOUT = 300$' \"$here/window-watch.py\")\" 1",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 94,
+        "end_line": 96,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The fixed 300 s caller timeout does not follow CREW_LAUNCHER_START_WAIT. With a wait above about 170 s, the caller kills the launcher, and its cleanup never runs.",
+        "evidence": "LAUNCH_TIMEOUT = 300",
+        "suggested_fix": "Derive the caller timeout from the variable, for example 240 + float(os.environ.get('CREW_LAUNCHER_START_WAIT', 60)). Do the same in window-watch.py.",
+        "explanation": "subprocess timeouts send SIGKILL, so the BaseException cleanup in iterm_launch never runs. The tab and the /tmp launch file stay behind, and the caller gets a timeout instead of exit 10.",
+        "needs_context": false,
+        "fingerprint": "c1786f850cf94e16",
+        "severity": "suggestion",
+        "score": 72,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "LAUNCH_TIMEOUT = 300",
+            "rc, out, err = sh(argv, timeout=LAUNCH_TIMEOUT)",
+            "proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)",
+            "A longer `CREW_LAUNCHER_START_WAIT` needs\n  a longer caller timeout."
+          ],
+          "rationale": "The caller timeout is fixed at 300 s and does not change with CREW_LAUNCHER_START_WAIT. subprocess.run kills the launcher with SIGKILL when the timeout ends, so its cleanup cannot run. This only happens when no claude starts and the helper plus the wait run past 300 s, and launcher.md already documents the limit. So the \"about 170 s\" threshold overstates the common case, and this is a real issue on an unusual path.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "span_text": "# A launcher start or resume call: the helper timeout (120 s), the default wait # for a claude process (60 s) and the bounded terminal steps fit in it. LAUNCH_TIMEOUT = 300",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8548,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 32168,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032273000000000007,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1377,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 31681,
+            "webSearchRequests": 0,
+            "costUSD": 0.1406242,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1438515
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6398,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17966,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018096,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 289,
+            "cacheReadInputTokens": 10312,
+            "cacheCreationInputTokens": 17475,
+            "webSearchRequests": 0,
+            "costUSD": 0.14765040000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 98,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.14946
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7404,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17964,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018089,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 477,
+            "cacheReadInputTokens": 10506,
+            "cacheCreationInputTokens": 17473,
+            "webSearchRequests": 0,
+            "costUSD": 0.1514332,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 105,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1532421
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 8452,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17966,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018091,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 589,
+            "cacheReadInputTokens": 10222,
+            "cacheCreationInputTokens": 17475,
+            "webSearchRequests": 0,
+            "costUSD": 0.1536324,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 328,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1554415
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8514,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17960,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018085,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 814,
+            "cacheReadInputTokens": 40035,
+            "cacheCreationInputTokens": 18030,
+            "webSearchRequests": 0,
+            "costUSD": 0.08427149999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 321,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08607999999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5178,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27439,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027574000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 470,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26948,
+            "webSearchRequests": 0,
+            "costUSD": 0.1129327,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1156901
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 22881,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46454,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046579,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 2478,
+            "cacheReadInputTokens": 306631,
+            "cacheCreationInputTokens": 52664,
+            "webSearchRequests": 0,
+            "costUSD": 0.2661231,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1024,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.270781
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10608,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27443,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027583,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 746,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26948,
+            "webSearchRequests": 0,
+            "costUSD": 0.2313854,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 292,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.23414369999999998
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 57207,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17976,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018100999999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 4825,
+            "cacheReadInputTokens": 147885,
+            "cacheCreationInputTokens": 32287,
+            "webSearchRequests": 0,
+            "costUSD": 0.384413,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 3604,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.38622310000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7749,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19667,
+            "outputTokens": 394,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021637,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 367,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 882,
+            "cacheReadInputTokens": 8734,
+            "cacheCreationInputTokens": 38379,
+            "webSearchRequests": 0,
+            "costUSD": 0.1632174,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 125,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1653811
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13473,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19667,
+            "outputTokens": 332,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021327,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 310,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 931,
+            "cacheReadInputTokens": 27906,
+            "cacheCreationInputTokens": 22675,
+            "webSearchRequests": 0,
+            "costUSD": 0.2056172,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 287,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2077499
+      }
+    ],
+    "total_cost_usd": 2.068044,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 43,
+      "gather": 348,
+      "scope": 13,
+      "triage": 9635,
+      "find_verify": 80635,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

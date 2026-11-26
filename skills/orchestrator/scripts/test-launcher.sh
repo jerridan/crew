@@ -861,6 +861,14 @@ lf=$(launch_file)
 r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" && [ ! -e "$lf" ] && r=0
 check 'window: no claude on the tab tty exits 10 and closes the tab' $r
 
+reset_stub
+TMUX=/tmp/t,1,0 run start --name nw2 --principal p --checkout "$CO"
+reset_stub; auto_tab; : > "$STUB_DIR/no-claude"
+TERM_PROGRAM=iTerm.app run resume --name nw2 --worktree "$CO/.claude/worktrees/nw2" --session-id s-nw2
+lf=$(launch_file)
+r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
+check 'resume: no claude on the tab tty exits 10, closes the tab and removes the launch file' $r
+
 # The line over 1024 bytes: exit 6 before any tab opens (a directory of apostrophes).
 reset_stub; auto_tab
 r=1; python3 - "$here" "$CO" "$T" > "$T/out" 2> "$T/err" <<'PY' && r=0

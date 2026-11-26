@@ -50,6 +50,10 @@ PARK='{"reason": "usage", "by": "usage", "at": "2026-11-25T10:00:00Z", "until": 
 
 seed parked sess-park active park "$PARK"
 seed live sess-live active park null
+WPARK='{"reason": "usage", "by": "usage", "at": "2026-11-25T10:00:00Z", "until": null, "next": "go on", "from_session": "sess-from", "prompt": "/x/prompt-1.md", "waiter": {"name": "pl", "session_id": "sess-pw", "tab": "tmux:%9", "terminal": "tmux", "tab_group": "g", "model": "opus", "started_at": "2026-11-25T10:00:01Z"}}'
+seed waitdead sess-from active park "$WPARK"
+seed waitfrom sess-from active park "$WPARK"
+seed waitother sess-from active park "$WPARK"
 seed delivered sess-del delivered
 seed woke sess-woke active park null parks \
   '[{"reason": "pause", "by": "ann", "at": "2026-11-25T09:00:00Z", "until": null, "next": "go on", "from_session": "sess-woke", "prompt": "/x/prompt-1.md", "waiter": {"name": "pl", "session_id": "sess-waiter", "tab": "tmux:%9", "terminal": "tmux", "tab_group": "g", "model": "opus", "started_at": "2026-11-25T09:00:01Z"}, "woke": {"at": "2026-11-25T09:30:00Z", "by": "resume word", "session_id": "sess-waiter"}}]'
@@ -61,6 +65,24 @@ STEP="a parked run stays active when the session that parked ends"
 end sess-park || fail "exit non-zero"
 [ "$(field parked)" = active ] || fail "run_state is $(field parked)"
 [ "$(orphaned parked)" = False ] || fail "the worktree was orphaned"
+pass
+
+STEP="the waiter ends while its park holds: the run goes interrupted"
+end sess-pw || fail "exit non-zero"
+[ "$(field waitdead)" = interrupted ] || fail "run_state is $(field waitdead)"
+pass
+
+STEP="the from_session of a park with a waiter ends: the run stays active"
+python3 "$RECORD_PY" "$CREW_RECORD_ROOT/waitdead" run set run_state '"active"' >/dev/null || fail "reset"
+end sess-from || fail "exit non-zero"
+[ "$(field waitfrom)" = active ] || fail "run_state is $(field waitfrom)"
+[ "$(field waitdead)" = active ] || fail "run_state is $(field waitdead)"
+[ "$(orphaned waitfrom)" = False ] || fail "the worktree was orphaned"
+pass
+
+STEP="an unrelated session ends while a park holds: the run stays active"
+end sess-unrelated || fail "exit non-zero"
+[ "$(field waitother)" = active ] || fail "run_state is $(field waitother)"
 pass
 
 STEP="a live run with run.park null goes interrupted"

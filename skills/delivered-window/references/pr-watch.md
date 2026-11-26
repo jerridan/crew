@@ -175,18 +175,36 @@ that `run.deploy` names:
 
 - `environment` set: the newest GitHub deployment of the merge commit to that
   environment, with its newest status.
-- `workflow` set: the newest GitHub Actions run of that workflow, by name,
-  with `head_sha` equal to the merge commit. Only `success` and the
-  conclusions `failure`, `timed_out` and `startup_failure` are results. Any
-  other run state is no result, and a newer run replaces it.
+- `workflow` set: the newest run of that workflow with `head_sha` equal to
+  the merge commit, of any event, because a named deploy can be a
+  `workflow_dispatch`. The script finds the workflow by its name in
+  `gh api --paginate repos/<owner>/<repo>/actions/workflows`, and keeps the
+  id of a good read. It then reads every page of that workflow's own runs.
+  A repository-wide read with `head_sha` returns 1,000 runs at most, and
+  scheduled runs can fill it. A workflow with that name and no run is no
+  result. Only `success` and the conclusions `failure`, `timed_out` and
+  `startup_failure` are results. Any other run state is no result, and a
+  newer run replaces it.
 - both `null`: the repo's GitHub deployments are read. With some, the script
   reads the newest deployment of the merge commit whose
   `production_environment` is true or whose environment is named `production`
   or `prod`, in any case. Name the environment in a `Deploy` section for a
   repo whose production environment has another name. With none, the script
-  reads the newest Actions run on the merge commit whose name holds `deploy`
-  or `release`, in any case, like a named workflow. When there is no such run,
-  the script reads the repo's workflows with `gh api --paginate
+  judges the deploy runs of the merge commit as a set. It reads every page of
+  the runs with `head_sha` equal to the merge commit and `event=push`, and
+  every page of the runs with `event=workflow_run`. It never reads the runs of
+  the other events, so a `schedule` run costs no call. A deploy run is one of
+  these runs whose name holds `deploy` or `release`, in any case. A deploy run
+  with the conclusion `failure`, `timed_out` or `startup_failure` makes the
+  script print `deploy-failed` at once, for the one that finished last. The
+  script prints `deployed` when at least one deploy run succeeded, no deploy
+  run is unfinished, and no run of any name in these two reads is unfinished.
+  The last condition holds back the ship word while a CI run can still start a
+  chained deploy. A deploy run with another conclusion, such as `cancelled` or
+  `skipped`, neither blocks nor counts. A failed read of either event is no
+  result: the poll prints no line, and it makes no `no-deploy` decision. The
+  timeout still applies. When no deploy run is in the set, the script reads
+  the repo's workflows with `gh api --paginate
   repos/<owner>/<repo>/actions/workflows`. A workflow counts when its state is
   `active` and its name or path holds `deploy` or `release`, in any case. With
   no such workflow, the script reads the files the merged PR added or renamed
@@ -206,13 +224,13 @@ The script prints one line and exits. The kinds are:
 
 | Line | Meaning |
 |---|---|
-| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run conclusion is `success` |
+| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run of the named workflow is `success`. With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded` |
 | `no-deploy <n> - <mergedAt> <text>` | only with both `null`: the repo has no deployment, no deploy run, no active deploy workflow and no workflow file that the merged PR added or renamed, and 2 minutes have passed since the merge (the text says so), or it has a deploy workflow, or such a file, and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
-| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run conclusion is `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
+| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run of the named workflow, or any deploy run of the default signal, has the conclusion `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
 | `deploy-timeout <n> - <time> no deploy seen <timeout> minutes after the watch started` | no result by `timeout_minutes` after `run.deploy.since`, or after `mergedAt` when the record has no `since`. When a deploy was seen but is still pending, the text says `no deploy finished` |
 | `closed <n> - <time> the PR closed` | the PR closed with no merge |
 
-`<n>` is the PR number, and `<id>` is the deployment or the run. A deployment
+`<n>` is the PR number, and `<id>` is the deployment or the run, one token. A deployment
 that a newer deploy made `inactive` counts as `success` when an earlier status
 was `success`. An empty deploy read costs one quiet poll.
 

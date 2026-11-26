@@ -14,6 +14,13 @@
 # It polls every 60 seconds, prints one terminal line (`deployed`,
 # `no-deploy`, `deploy-failed`, `deploy-timeout` or `closed`) and exits. With
 # `deploy-once`, it polls one time and prints a line only when one is due.
+# With `workflow`, it reads every page of that workflow's own runs on the merge
+# commit, of any event, and judges the newest. With no `environment` and no
+# `workflow`, and no GitHub deployment, it judges the set of the `push` and
+# `workflow_run` runs of the merge commit whose name holds `deploy` or
+# `release`: `deploy-failed` at once for a failed run, and `deployed` when one
+# succeeded and no run of the merge is unfinished. A failed read prints
+# nothing. `pr-watch.md`, "The deploy poll", owns these rules.
 # With no `environment` and no `workflow`, a repo with no GitHub deployment
 # and no active workflow whose name or path holds `deploy` or `release` prints
 # `no-deploy` once 2 minutes have passed since the merge, and prints nothing

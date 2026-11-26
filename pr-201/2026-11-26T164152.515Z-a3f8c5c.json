@@ -1,0 +1,1545 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 201,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Read every page of the deploy poll and wait for every deploy run",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/201"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "cd3cc1983fd47bb9de1830b828f1b8b5dfa6f3a8",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-201/2026-11-26T161655.541Z-cd3cc19.json",
+      "open": [],
+      "dismissed": [
+        "06c2e3ca8b284f75",
+        "6ae37795eaa52733",
+        "6fcffdefa1a757f4",
+        "dcb838185bbed568"
+      ],
+      "fetch_failed": false
+    },
+    "base": "e55cf4c2a8f54a22f3f5a3c4e8656d0d15970cd2",
+    "head": "a3f8c5cf0d606490f46b6275acc9ea50e1415011",
+    "started_at": "2026-11-26T16:41:52.515Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Read every page of the deploy poll and wait for every deploy run\n\n## Summary\n\nThe deploy watch missed the deploy of a merge on a busy default branch. It read only the first 100 runs of the merge commit, and scheduled workflows put about 1,000 runs on one commit in an hour, so the deploy run was not on that page. It also judged only the newest deploy run, but a monorepo merge starts one deploy workflow per service. Now the watch reads every page, reads only the runs that the merge itself started (push and chained workflow_run events), and prints `deployed` only when every deploy run of the merge finished and at least one succeeded. A failed deploy run prints `deploy-failed` at once. A named `Deploy: workflow:` reads that workflow's own runs on every page.\n\nCloses #146\n\n**Ticket:** [jerridan/crew#146](https://github.com/jerridan/crew/issues/146)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/delivered-window/references/pr-watch.md`, \"The deploy poll\", owns the rule and states it whole. `skills/project-lead/SKILL.md`, \"Standing instructions\", owns the `Deploy` lines. `docs/design.md` §15.127 (the deploy watch) and the new finding 170.\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/pr-watch.sh`: `wf_check()` is gone. `runs_read()` reads every page. `wf_default()` reads `event=push` and `event=workflow_run` and judges the set of deploy runs. `wf_named()` finds the named workflow's ids through `actions/workflows` and reads `actions/workflows/<id>/runs?head_sha=` on every page, because a repository-wide `head_sha` read returns 1,000 runs at most. A failed runs read makes no `no-deploy` decision; `deploy_timeout()` still runs.\n- `skills/delivered-window/scripts/test-pr-watch-deploy.sh`: the stub `gh` serves pages of 100, filters by `head_sha` and `event`, honours `--paginate`, serves the workflow-scoped endpoint and logs each call. New cases for each Outcome of the issue, for failed reads and for the line shape.\n- `skills/delivered-window/references/pr-watch.md` and `skills/project-lead/SKILL.md`: the prose matches the code.\n- `docs/design.md`: finding 170. Both manifests: 0.1.138.\n\n### Constraints that applied\n\n- The line format `<kind> <id> - <time> <text>` and the exit codes did not change; `<id>` stays one token, so `watch-step.py`'s `split(None, 4)` still parses it. The `deployed` text of the default signal now ends `; <n> deploy runs succeeded`.\n- Bash with `gh` and `jq` only. A failed read prints no line.\n- Not in scope, as the issue says: matching a deploy run by anything other than its name. The deployments rung did not change.\n\n### How this was verified\n\n`bash skills/delivered-window/scripts/test-pr-watch-deploy.sh` (46 of 46), `test-watch-step.sh` (90 of 90) and `test-window-watch.sh` (114 of 114) pass at the head. The test commit 0673c83 fails the first script (31 of 46) on the new cases before the fix. A Codex review read the spec and the plan before any code; its findings (failed reads, the 1,000-run cap of a `head_sha` search, both event streams in one case) are in the code and the tests.\n\n### Known gaps\n\n- No crew run has used the new watch against a real repo.\n- A chained deploy that GitHub creates some seconds after its CI run ends can miss the set when another deploy run already succeeded.\n- A run that never leaves `queued` or `waiting` on the merge commit holds back `deployed` until the timeout.\n\n<details><summary>spec.md</summary>\n\n# Spec: the deploy watch on a busy default branch (jerridan/crew#146)\n\nRepo: /Users/jerridanquiring/src/crew/.claude/worktrees/issue-146\n\n## The problem\n\n`skills/delivered-window/scripts/pr-watch.sh`'s `wf_check()` reads one page of `actions/runs?head_sha=<merge sha>&per_page=100` and judges the newest run whose name matches. On a default branch with scheduled workflows, a merge commit collects about 1,000 runs in an hour, almost all `schedule` events. The deploy run is not on the first page, so the watch prints nothing. In a monorepo, one merge starts several deploy runs, one per service, and the watch judges only the newest.\n\n## Requirements\n\nR1. **Every page.** The workflow-run rungs of the deploy poll read every page of the runs they query, so a matching run is found at any position in the list.\n- AC1: in the seeded test, the merge commit has more than 100 runs over two or more pages, and the deploy run is only on a later page. `deploy-once` prints `deployed`.\n\nR2. **The default rung keeps only the merge's own runs.** With no `environment` and no `workflow` in `run.deploy`, and no GitHub deployments in the repo, the poll counts only runs whose `event` is `push` or `workflow_run`, whose name holds `deploy` or `release` (case-insensitive, as now).\n- AC2: in the seeded test, a `schedule` run and a `workflow_dispatch` run named like a deploy, with conclusion `success`, are the only matching names on the merge commit. `deploy-once` prints no `deployed` line.\n\nR3. **The default rung waits for every deploy run of the merge.** The rung judges the set of the matching runs of R2, not the newest one:\n- A run whose conclusion is `failure`, `timed_out` or `startup_failure` makes the poll print `deploy-failed` at once. When more than one run failed, the line names the one with the latest `updated_at`, with its id, time and name.\n- `deployed` prints only when at least one matching run succeeded, no matching run is still unfinished (its `status` is not `completed`), and no `push` or `workflow_run` run of any name on the merge commit is unfinished. The last condition holds back the ship word while a CI run can still start a chained deploy (a `workflow_run` event).\n- A completed run with any other conclusion (`cancelled`, `skipped`, `neutral` and the like) neither blocks nor counts as a success.\n- The `deployed` line names the matching run that finished last, and says how many deploy runs succeeded.\n- AC3a: two matching runs, one `success` and one `in_progress`: no line.\n- AC3b: both `success`: one `deployed` line.\n- AC3c: one `success`, one `failure`: one `deploy-failed` line naming the failed run.\n- AC3d: one matching run `success`, and a `push` run named `CI` still `in_progress`: no line.\n\nR4. **`Deploy: workflow: <name>` still works for one named workflow.** It reads every page (R1), keeps every event (a named deploy can be a `workflow_dispatch`), and judges the newest run of that name, as now.\n- AC4: in the seeded test, `run.deploy.workflow` names a run on a later page: `deployed`. A newer run of that name with `failure`: `deploy-failed`.\n\nR5. **The line format and the exit codes do not change.** Each line is `<kind> <id> - <time> <text>`, with one token for `<id>`. `skills/delivered-window/scripts/watch-step.py` parses it with `split(None, 4)`.\n- AC5: `bash skills/delivered-window/scripts/test-watch-step.sh` and `bash skills/delivered-window/scripts/test-window-watch.sh` still pass.\n\nR6. **The references agree with the code.** `skills/delivered-window/references/pr-watch.md`'s \"The deploy poll\" owns the rule and states R1 to R4. Every other file that states how the poll picks or judges a run says the same or points at that section, among them `skills/project-lead/SKILL.md`'s `Deploy` lines and `skills/delivered-window/SKILL.md`. The comment above `wf_check()` and the script header say the same.\n- AC6: a reviewer reads each of those passages beside the code and finds no disagreement. No passage says \"the newest run\" of the default rung.\n\nR7. **The test covers each rule.** `skills/delivered-window/scripts/test-pr-watch-deploy.sh`'s stub `gh` answers `--paginate`, the `page` parameter and the `event` query parameter the way GitHub does, so AC1 to AC4 test the real queries. Every case that passed before still passes.\n- AC7: `bash skills/delivered-window/scripts/test-pr-watch-deploy.sh` exits 0.\n\n## Global constraints\n\n- `pr-watch.sh` stays bash, with `gh` and `jq` as its only tools.\n- A failed `gh` read is no result for that poll, as now: it never prints a line.\n- The default rung queries by event: one paginated `actions/runs?head_sha=<sha>&event=push` read and one with `event=workflow_run`. It never reads the unfiltered list of the merge commit's runs, so `schedule` runs cost it no calls.\n- ASD-STE100 for every prose change, and `writing-standard.md` for every reference. A rule lives in one file.\n- A change under `skills/` bumps `version` in both manifests; the orchestrator owns the value, and the project lead sets it at the PR.\n- A new `docs/design.md` §15 finding records the change; the project lead writes it.\n\n## Non-goals\n\n- Recognising a deploy run by anything other than its name (the issue's \"Not in scope\"). `Deploy` stays the override, and `manual` stays the answer for a deploy inside the CI workflow or outside GitHub.\n- The deployments rung (`environment`, or a repo with GitHub deployments) does not change.\n- The `no-deploy` rules (the 2-minute and 10-minute waits) do not change, except that they see the runs of R2.\n- Many named workflows in `Deploy`.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take?\nRoute: precedent\nAnswer: change path\nCitation: the deploy watch finds the deploy of a merge commit on a busy default branch, and it waits for every deploy run\nConfidence: high Timestamp: 2026-11-26T15:37:24Z\n\n## Does the work take the light path?\nRoute: precedent\nAnswer: no: the criterion does not cover that the references agree with the code, and the multi-run rule has open choices (the line's id, a chained CD that starts late)\nCitation: scout-1's report and charter.md\nConfidence: high Timestamp: 2026-11-26T15:38:46Z\n\n## Preference sweep: what does the principal want that the repo cannot say?\nRoute: preference\nAnswer: none\nCitation: spec.md R3 and R5 choose the id token and the hold for an unfinished push run; both are reversible\nConfidence: medium Timestamp: 2026-11-26T15:39:30Z\n\n## Spec critic r1: adjudication\nRoute: precedent\nAnswer: both accepted and applied to spec.md: 1 suggestion (the default rung must query by event, two paginated reads), 2 suggestion (several failed runs: name the one with the latest updated_at)\nCitation: reviews/spec-critic-r1.md\nConfidence: high Timestamp: 2026-11-26T15:43:07Z\n\n## Plan review: which findings does the run act on?\nRoute: precedent\nAnswer: 3 of 3 findings sent to the ICs\nCitation: reviews/plan-review-r1.md\nConfidence: high\nFinding: F1 blocking (reviewer: blocking) — sent to ic-deploy-watch-r1\nFinding: F2 blocking (reviewer: blocking) — sent to ic-deploy-watch-r1\nFinding: F3 suggestion (reviewer: suggestion) — sent to ic-deploy-watch-r1 Timestamp: 2026-11-26T15:48:30Z\n\n## Verify deploy-watch r1\nRoute: precedent\nAnswer: accepted: crew-step verify all ok (criterion exit 0, red at 0673c83 exits 1, 4 files in the file set, no suite); diff read against spec R1-R7 and the three plan findings\nCitation: verify-r1.out, diffs/deploy-watch-verify.patch\nConfidence: high Timestamp: 2026-11-26T16:09:59Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 6
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "hunks": 8
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Rewrites the deploy-watch logic in pr-watch.sh (pagination, event filtering, set-based judgment, failed-read and timeout handling) that decides the ship word.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/delivered-window/scripts/pr-watch.sh: wf_default() jq logic (group_by workflow_id, newest per workflow, all-completed check, failure ordering)",
+        "skills/delivered-window/scripts/pr-watch.sh: wf_named() workflow id lookup, caching of wf_ids, multi-id merging, return 2 handling",
+        "skills/delivered-window/scripts/pr-watch.sh: runs_read() --paginate with --jq and tojson; deploy_poll() rc handling and deploy_timeout() extraction",
+        "skills/delivered-window/scripts/pr-watch.sh: wf_default no-deploy path when the set is empty and a failed read must not produce no-deploy",
+        "skills/delivered-window/scripts/test-pr-watch-deploy.sh: stub gh pagination fidelity",
+        "skills/delivered-window/references/pr-watch.md: spec matches the script"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "note": "Core logic change: wf_check replaced by wf_named and wf_default, paginated reads, timeout helper extracted."
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "note": "Stub gh extended with pages and filters by event and workflow id. New cases for each rule."
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "Spec of the deploy poll rewritten. Check it against the script."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 170."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "One-line wording change for workflow semantics (newest run, any event)."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.138."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.138."
+        }
+      ],
+      "summary": "The deploy watch in pr-watch.sh now reads every page of runs. By default it reads only push and workflow_run events and judges the newest run of each deploy workflow as a set. It prints deploy-failed at once and deployed only when no run is unfinished. A named workflow now reads that workflow's own runs, of any event. A failed read gives no result and the timeout still applies. The change adds tests with a paginating stub gh, updates the docs, and bumps the version."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Rewrites the deploy-watch logic in pr-watch.sh (pagination, event filtering, set-based judgment, failed-read and timeout handling) that decides the ship word.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11415,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15338,
+              "outputTokens": 31,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015493000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 539,
+              "cacheReadInputTokens": 35471,
+              "cacheCreationInputTokens": 15196,
+              "webSearchRequests": 0,
+              "costUSD": 0.13945820000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 130,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1410075
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/pr-watch.sh",
+            "start_line": 129,
+            "end_line": 132,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "`deployed` can print too early: one deploy run has succeeded, every push run is complete, and GitHub has not yet created a chained `workflow_run` deploy.",
+            "evidence": "if ($s | length) > 0 and all($all[]; .status == \"completed\")",
+            "explanation": "The check only looks at runs that already exist. A chained deploy that GitHub creates a few seconds after its CI run ends is not in the set yet, so the ship word goes out before that service deploys or fails.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/scripts/pr-watch.sh",
+            "start_line": 119,
+            "end_line": 120,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The default rung no longer sees deploy runs started by other events such as `release`, `deployment`, `repository_dispatch` or a CI-triggered `workflow_dispatch`. The old code counted them, so these repos may now get `no-deploy` or a timeout.",
+            "evidence": "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2\n  chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2",
+            "explanation": "Take a repo whose deploy workflow runs on `release` or `deployment` events and has an active deploy workflow. It now waits 10 minutes and prints `no-deploy`, which is a false ship word, where before it judged the real deploy run.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 56337,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15334,
+              "outputTokens": 31,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015489000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 10,
+              "outputTokens": 5297,
+              "cacheReadInputTokens": 148113,
+              "cacheCreationInputTokens": 31909,
+              "webSearchRequests": 0,
+              "costUSD": 0.39087459999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 3715,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.39242350000000004
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/references/pr-watch.md",
+            "start_line": 230,
+            "end_line": 230,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The table says the default `deployed` line names the deploy run that finished last, but the code names the succeeded run with the latest updated_at, so a cancelled or skipped run that finished later is not the one named.",
+            "evidence": "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+            "suggested_fix": "Say \"the line names the succeeded deploy run that finished last\".",
+            "explanation": "The code picks `$s | last`, and `$s` holds only the `success` runs.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10893,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15352,
+              "outputTokens": 31,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015507000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 691,
+              "cacheReadInputTokens": 35305,
+              "cacheCreationInputTokens": 17485,
+              "webSearchRequests": 0,
+              "costUSD": 0.160777,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 150,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.16232769999999996
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8743,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27966,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0028076000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 930,
+              "cacheReadInputTokens": 48707,
+              "cacheCreationInputTokens": 32013,
+              "webSearchRequests": 0,
+              "costUSD": 0.1422307,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 742,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1450383
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4917,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15348,
+              "outputTokens": 32,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015508000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 298,
+              "cacheReadInputTokens": 10506,
+              "cacheCreationInputTokens": 14857,
+              "webSearchRequests": 0,
+              "costUSD": 0.12692520000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 46,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.128476
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+            "start_line": 296,
+            "end_line": 322,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The caching of `wf_ids` across polls, and the retry after a failed or empty workflow lookup, have no test.",
+            "evidence": "check 'named workflow does not exist, 3 minutes' none",
+            "suggested_fix": "Add a multi-poll case in which the workflow list is empty on the first poll and has the workflow on the next, and expect `deployed`.",
+            "explanation": "Every named-rung case uses `deploy-once`, one poll, so a change that never caches or never retries the id lookup would still pass.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 5960,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15328,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015438,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 656,
+              "cacheReadInputTokens": 37403,
+              "cacheCreationInputTokens": 18484,
+              "webSearchRequests": 0,
+              "costUSD": 0.0842443,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 239,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08578809999999999
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "start_line": 230,
+          "end_line": 230,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The table says the default `deployed` line names the deploy run that finished last, but the code names the succeeded run with the latest updated_at, so a cancelled or skipped run that finished later is not the one named.",
+          "evidence": "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+          "suggested_fix": "Say \"the line names the succeeded deploy run that finished last\".",
+          "explanation": "The code picks `$s | last`, and `$s` holds only the `success` runs.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run of the named workflow is `success`. With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded` |",
+            "($m | map(select(.conclusion == \"success\")) | sort_by(.updated_at)) as $s",
+            "| if ($s | length) > 0 and all($all[]; .status == \"completed\")\n              then ($s | last) as $l"
+          ],
+          "rationale": "The code names the latest-updated succeeded run (`$s | last`, where `$s` holds only `success` runs), not any deploy run that finished last. The doc wording is imprecise, but the practical effect is minor.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+            "else ($m | map(select(.conclusion == \"success\")) | sort_by(.updated_at)) as $s",
+            "then ($s | last) as $l"
+          ],
+          "rationale": "The code names the last of the succeeded newest runs, sorted by updated_at. A cancelled or skipped run that finished later does not stop `deployed` from printing, but the line does not name it, so the doc's \"the deploy run that finished last\" is imprecise. The outcome is correct and only the wording is off, and the fix is one word.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+            "else ($m | map(select(.conclusion == \"success\")) | sort_by(.updated_at)) as $s",
+            "then ($s | last) as $l"
+          ],
+          "rationale": "The code names the last of the succeeded newest runs, sorted by updated_at. A cancelled or skipped run that finished later does not stop `deployed` from printing, but the line does not name it, so the doc's \"the deploy run that finished last\" is imprecise. The outcome is correct and only the wording is off, and the fix is one word.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "start_line": 296,
+          "end_line": 322,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The caching of `wf_ids` across polls, and the retry after a failed or empty workflow lookup, have no test.",
+          "evidence": "check 'named workflow does not exist, 3 minutes' none",
+          "suggested_fix": "Add a multi-poll case in which the workflow list is empty on the first poll and has the workflow on the next, and expect `deployed`.",
+          "explanation": "Every named-rung case uses `deploy-once`, one poll, so a change that never caches or never retries the id lookup would still pass.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if [ -z \"$wf_ids\" ]; then",
+            "check 'named workflow does not exist, 3 minutes' none"
+          ],
+          "rationale": "pr-watch.sh caches wf_ids across polls and retries when it is empty. Every named-rung test runs deploy-once, which polls once, so no test covers the cache or the retry. The gap is real but minor.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "out=$(bash \"$PW\" \"${REC:-$T/rec}\" deploy-once 2>&1)",
+            "check 'named workflow does not exist, 3 minutes' none",
+            "export REC=\"$T/rec-named\"",
+            "  if [ -z \"$wf_ids\" ]; then\n    # Only a good read with a match is kept: a workflow can appear later.",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)"
+          ],
+          "rationale": "The new `wf_named()` caches `wf_ids` across polls and looks the ids up again when a read fails or finds nothing. Every named-rung case runs through `check`, which makes one `deploy-once` call. The only multi-poll `deploy` cases use the default record, so neither the caching nor the retry is tested.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "out=$(bash \"$PW\" \"${REC:-$T/rec}\" deploy-once 2>&1)",
+            "check 'named workflow does not exist, 3 minutes' none",
+            "export REC=\"$T/rec-named\"",
+            "  if [ -z \"$wf_ids\" ]; then\n    # Only a good read with a match is kept: a workflow can appear later.",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)"
+          ],
+          "rationale": "The new `wf_named()` caches `wf_ids` across polls and looks the ids up again when a read fails or finds nothing. Every named-rung case runs through `check`, which makes one `deploy-once` call. The only multi-poll `deploy` cases use the default record, so neither the caching nor the retry is tested.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "start_line": 129,
+          "end_line": 132,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "`deployed` can print too early: one deploy run has succeeded, every push run is complete, and GitHub has not yet created a chained `workflow_run` deploy.",
+          "evidence": "if ($s | length) > 0 and all($all[]; .status == \"completed\")",
+          "explanation": "The check only looks at runs that already exist. A chained deploy that GitHub creates a few seconds after its CI run ends is not in the set yet, so the ship word goes out before that service deploys or fails.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if ($s | length) > 0 and all($all[]; .status == \"completed\")"
+          ],
+          "rationale": "The check only looks at runs that already exist, so a chained workflow_run deploy not yet created is missed. The PR's own \"Known gaps\" section states this, so a review comment adds little.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if ($s | length) > 0 and all($all[]; .status == \"completed\")",
+            "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2",
+            "chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2"
+          ],
+          "rationale": "The claim holds. The `deployed` check only looks at runs that exist at read time, so if one deploy has succeeded and every push run is complete, a chained workflow_run deploy that GitHub has not created yet is missed. The PR description already lists this race under \"Known gaps\", so the finding only repeats a trade-off the author chose.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if ($s | length) > 0 and all($all[]; .status == \"completed\")",
+            "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2",
+            "chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2"
+          ],
+          "rationale": "The claim holds. The `deployed` check only looks at runs that exist at read time, so if one deploy has succeeded and every push run is complete, a chained workflow_run deploy that GitHub has not created yet is missed. The PR description already lists this race under \"Known gaps\", so the finding only repeats a trade-off the author chose.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "start_line": 119,
+          "end_line": 120,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The default rung no longer sees deploy runs started by other events such as `release`, `deployment`, `repository_dispatch` or a CI-triggered `workflow_dispatch`. The old code counted them, so these repos may now get `no-deploy` or a timeout.",
+          "evidence": "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2\n  chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2",
+          "explanation": "Take a repo whose deploy workflow runs on `release` or `deployment` events and has an active deploy workflow. It now waits 10 minutes and prints `no-deploy`, which is a false ship word, where before it judged the real deploy run.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2",
+            "chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2"
+          ],
+          "rationale": "The default rung now reads only push and workflow_run events. Deploys started by release, deployment or dispatch events are missed, so those repos can get a false no-deploy or a timeout. This is a deliberate design choice, and `Deploy: workflow:` is a workaround.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2",
+            "chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2",
+            "echo \"no-deploy $N - $merged_at the repo has no GitHub deployments or deploy runs\"",
+            "dep_count=$(gh api \"repos/$R/deployments?per_page=1\" --jq length 2>/dev/null) || dep_count=''"
+          ],
+          "rationale": "The claim holds. The default rung now reads only `push` and `workflow_run` runs, so a deploy run on the merge commit started by another event is no longer seen. After 10 minutes the poll prints `no-deploy`. This is a deliberate choice, though: spec R2 and AC2 exclude `workflow_dispatch` and `schedule` runs on purpose, and the description says `Deploy: workflow:` stays the override. The `deployment` example is also wrong, because a deployment event implies a GitHub deployment exists, so `dep_count` is nonzero and the poll uses the deployments rung instead.",
+          "score": 72,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "push=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100\") || return 2",
+            "chain=$(runs_read \"repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100\") || return 2",
+            "echo \"no-deploy $N - $merged_at the repo has no GitHub deployments or deploy runs\"",
+            "dep_count=$(gh api \"repos/$R/deployments?per_page=1\" --jq length 2>/dev/null) || dep_count=''"
+          ],
+          "rationale": "The claim holds. The default rung now reads only `push` and `workflow_run` runs, so a deploy run on the merge commit started by another event is no longer seen. After 10 minutes the poll prints `no-deploy`. This is a deliberate choice, though: spec R2 and AC2 exclude `workflow_dispatch` and `schedule` runs on purpose, and the description says `Deploy: workflow:` stays the override. The `deployment` example is also wrong, because a deployment event implies a GitHub deployment exists, so `dep_count` is nonzero and the poll uses the deployments rung instead.",
+          "score": 72,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6077733963,
+      "review_url": "https://github.com/jerridan/crew/pull/201#pullrequestreview-6077733963",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 140052902303
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "start_line": 296,
+        "end_line": 322,
+        "category": "test",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The caching of `wf_ids` across polls, and the retry after a failed or empty workflow lookup, have no test.",
+        "evidence": "check 'named workflow does not exist, 3 minutes' none",
+        "suggested_fix": "Add a multi-poll case in which the workflow list is empty on the first poll and has the workflow on the next, and expect `deployed`.",
+        "explanation": "Every named-rung case uses `deploy-once`, one poll, so a change that never caches or never retries the id lookup would still pass.",
+        "needs_context": true,
+        "fingerprint": "f31a2554ee3c3e07",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "out=$(bash \"$PW\" \"${REC:-$T/rec}\" deploy-once 2>&1)",
+            "check 'named workflow does not exist, 3 minutes' none",
+            "export REC=\"$T/rec-named\"",
+            "  if [ -z \"$wf_ids\" ]; then\n    # Only a good read with a match is kept: a workflow can appear later.",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)"
+          ],
+          "rationale": "The new `wf_named()` caches `wf_ids` across polls and looks the ids up again when a read fails or finds nothing. Every named-rung case runs through `check`, which makes one `deploy-once` call. The only multi-poll `deploy` cases use the default record, so neither the caching nor the retry is tested.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "check 'workflow_run read fails, 11 minutes' none FAIL_WFRUN=1 setup 3 \"$NODEP\" \"$WF_PR\" \"$NORUNS\" check 'workflow_run read fails, no deploy workflow, 3 minutes' none FAIL_RUNS=1 setup 11 \"$NODEP\" \"$WF_PR\" \"$NORUNS\" check 'both runs reads fail, 11 minutes' none FAIL_WFRUN=1 setup 200 \"$NODEP\" \"$WF_PR\" \"$NORUNS\" check 'workflow_run read fails past the timeout' timeout # AC4: Deploy: workflow: <name> reads the workflow's own runs, with every event. WFN='{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"path\":\".github/workflows/ci.yml\",\"state\":\"active\"},{\"id\":55,\"name\":\"Deploy CD\",\"path\":\".github/workflows/cd.yml\",\"state\":\"active\"}]}' OLD=$(jq -nc '[range(1; 121) | {id: (100 + .), name: \"Deploy CD\", event: \"workflow_dispatch\", status: \"completed\", conclusion: \"cancelled\", created_at: \"2026-01-01T00:00:00Z\", updated_at: \"2026-01-01T00:00:00Z\", workflow_id: 55}]') NEWOK=$(run 1 'Deploy CD' workflow_dispatch completed success $T2 55) NEWBAD=$(run 2 'Deploy CD' schedule completed failure $T3 55) WFRUNS=$(jq -nc --argjson o \"$OLD\" --argjson a \"$NEWOK\" '{workflow_runs: ($o[0:110] + [$a] + $o[110:])}') export REC=\"$T/rec-named\" setup 3 \"$NODEP\" \"$WFN\" \"$WFRUNS\"; check 'AC4 named workflow run on page 2' deployed:1 total=$((total + 1)) if grep -q 'actions/workflows/55/runs' \"$STUB_DIR/calls\" && ! grep -q 'actions/runs' \"$STUB_DIR/calls\"; then echo \"ok named rung reads the workflow's runs only\" else fails=$((fails + 1)); echo \"FAIL named rung reads the workflow's runs only\"; sed 's/^/ /' \"$STUB_DIR/calls\" fi setup 3 \"$NODEP\" \"$WFN\" \"$(jq -nc --argjson w \"$WFRUNS\" --argjson b \"$NEWBAD\" '{workflow_runs: ($w.workflow_runs + [$b])}')\" check 'AC4 a newer run of that name failed' failed:2 setup 3 \"$NODEP\" '{\"workflows\":[{\"id\":56,\"name\":\"CI\",\"state\":\"active\"}]}' \"$WFRUNS\" check 'named workflow does not exist, 3 minutes' none",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/references/pr-watch.md",
+        "start_line": 230,
+        "end_line": 230,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The table says the default `deployed` line names the deploy run that finished last, but the code names the succeeded run with the latest updated_at, so a cancelled or skipped run that finished later is not the one named.",
+        "evidence": "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+        "suggested_fix": "Say \"the line names the succeeded deploy run that finished last\".",
+        "explanation": "The code picks `$s | last`, and `$s` holds only the `success` runs.",
+        "needs_context": false,
+        "fingerprint": "9c4339f57cf19077",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded`",
+            "else ($m | map(select(.conclusion == \"success\")) | sort_by(.updated_at)) as $s",
+            "then ($s | last) as $l"
+          ],
+          "rationale": "The code names the last of the succeeded newest runs, sorted by updated_at. A cancelled or skipped run that finished later does not stop `deployed` from printing, but the line does not name it, so the doc's \"the deploy run that finished last\" is imprecise. The outcome is correct and only the wording is off, and the fix is one word.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run of the named workflow is `success`. With both `null` and no deployment, the line names the deploy run that finished last, and its text ends `; <count> deploy runs succeeded` |",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6427,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17672,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017782,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1032,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 17185,
+            "webSearchRequests": 0,
+            "costUSD": 0.07919019999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08096839999999998
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 4917,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15348,
+            "outputTokens": 32,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015508000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 298,
+            "cacheReadInputTokens": 10506,
+            "cacheCreationInputTokens": 14857,
+            "webSearchRequests": 0,
+            "costUSD": 0.12692520000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 46,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.128476
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8743,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27966,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028076000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 930,
+            "cacheReadInputTokens": 48707,
+            "cacheCreationInputTokens": 32013,
+            "webSearchRequests": 0,
+            "costUSD": 0.1422307,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 742,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1450383
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 10893,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15352,
+            "outputTokens": 31,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015507000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 691,
+            "cacheReadInputTokens": 35305,
+            "cacheCreationInputTokens": 17485,
+            "webSearchRequests": 0,
+            "costUSD": 0.160777,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 150,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.16232769999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5960,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15328,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015438,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 656,
+            "cacheReadInputTokens": 37403,
+            "cacheCreationInputTokens": 18484,
+            "webSearchRequests": 0,
+            "costUSD": 0.0842443,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 239,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08578809999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 11415,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15338,
+            "outputTokens": 31,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015493000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 539,
+            "cacheReadInputTokens": 35471,
+            "cacheCreationInputTokens": 15196,
+            "webSearchRequests": 0,
+            "costUSD": 0.13945820000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 130,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1410075
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4331,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 551,
+            "cacheReadInputTokens": 34900,
+            "cacheCreationInputTokens": 26506,
+            "webSearchRequests": 0,
+            "costUSD": 0.115032,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 102,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 26657,
+            "outputTokens": 322,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 291,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1178587
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5657,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17602,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017732,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 803,
+            "cacheReadInputTokens": 25845,
+            "cacheCreationInputTokens": 17834,
+            "webSearchRequests": 0,
+            "costUSD": 0.0819585,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 21,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0837317
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10941,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26671,
+            "outputTokens": 494,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029141,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 465,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 794,
+            "cacheReadInputTokens": 34910,
+            "cacheCreationInputTokens": 26849,
+            "webSearchRequests": 0,
+            "costUSD": 0.23767000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 192,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24058410000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17389,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17624,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017759000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1059,
+            "cacheReadInputTokens": 47663,
+            "cacheCreationInputTokens": 18464,
+            "webSearchRequests": 0,
+            "costUSD": 0.17844859999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 89,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18022449999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 56337,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15334,
+            "outputTokens": 31,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015489000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 5297,
+            "cacheReadInputTokens": 148113,
+            "cacheCreationInputTokens": 31909,
+            "webSearchRequests": 0,
+            "costUSD": 0.39087459999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 3715,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.39242350000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3394,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21184,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021289000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 434,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 20693,
+            "webSearchRequests": 0,
+            "costUSD": 0.0875527,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0896816
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4886,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21312,
+            "outputTokens": 463,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023627,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 440,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 694,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 20821,
+            "webSearchRequests": 0,
+            "costUSD": 0.0906647,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0930274
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 6215,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21186,
+            "outputTokens": 376,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023066,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 353,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 592,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 20691,
+            "webSearchRequests": 0,
+            "costUSD": 0.1782494,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 158,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.180556
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 11880,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21304,
+            "outputTokens": 615,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024379000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 591,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1157,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 20809,
+            "webSearchRequests": 0,
+            "costUSD": 0.1904934,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 569,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1929313
+      }
+    ],
+    "total_cost_usd": 2.3146248000000003,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 222,
+      "scope": 13,
+      "triage": 7287,
+      "find_verify": 75564,
+      "merge": 8
+    },
+    "errors": []
+  }
+}

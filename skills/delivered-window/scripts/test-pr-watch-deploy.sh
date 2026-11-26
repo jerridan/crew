@@ -267,22 +267,29 @@ setup 3 "$NODEP" "$WF_DEPLOY" "$SCHED"; check 'AC2 schedule and dispatch runs, 3
 setup 11 "$NODEP" "$WF_DEPLOY" "$SCHED"; check 'AC2 schedule and dispatch runs, 11 minutes' no-deploy-wait
 
 # AC3: the set of deploy runs of the merge, from both event streams.
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run in_progress '' $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run in_progress '' $T2 2)")"
 check 'AC3a push success, workflow_run in progress' none
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed success $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed success $T2 2)")"
 check 'AC3b push and workflow_run both succeed' deployed:2:2
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed failure $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed failure $T2 2)")"
 check 'AC3c push success, workflow_run failure' failed:2
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed failure $T1)" "$(run 2 'Deploy web' workflow_run completed timed_out $T3)" "$(run 3 'Release' push completed success $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed failure $T1)" "$(run 2 'Deploy web' workflow_run completed timed_out $T3 2)" "$(run 3 'Release' push completed success $T2 3)")"
 check 'two failures name the latest' failed:2
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 CI push in_progress '' $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 CI push in_progress '' $T2 9)")"
 check 'AC3d deploy success, push CI in progress' none
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 Notify workflow_run in_progress '' $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 Notify workflow_run in_progress '' $T2 9)")"
 check 'deploy success, workflow_run Notify in progress' none
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed cancelled $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy web' workflow_run completed cancelled $T2 2)")"
 check 'a cancelled deploy run neither blocks nor counts' deployed:1:1
-setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed cancelled $T1)" "$(run 2 'Deploy web' workflow_run completed skipped $T2)")"
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed cancelled $T1)" "$(run 2 'Deploy web' workflow_run completed skipped $T2 2)")"
 check 'only cancelled and skipped deploy runs' none
+# A run is judged by the newest run of its workflow: a re-run replaces it.
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed failure $T1)" "$(run 2 'Deploy api' workflow_run completed success $T2)")"
+check 'older failed run, newer success of the same workflow' deployed:2:1
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)" "$(run 2 'Deploy api' workflow_run completed failure $T2)")"
+check 'older success, newer failed run of the same workflow' failed:2
+setup 3 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed failure $T1)" "$(run 2 CI push in_progress '' $T2 9)")"
+check 'a failed deploy run and an unfinished run' failed:1
 
 # A failed runs read is no result: no line from the run judgment or the no-deploy wait.
 FAIL_WFRUN=1 setup 11 "$NODEP" "$WF_PR" "$(runs "$(run 1 'Deploy api' push completed success $T1)")"
@@ -319,6 +326,14 @@ FAIL_RUNS=1 setup 3 "$NODEP" "$WFN" "$WFRUNS"
 check 'named workflow runs read fails' none
 FAIL_RUNS=1 setup 200 "$NODEP" "$WFN" "$WFRUNS"
 check 'named workflow runs read fails past the timeout' timeout
+# Two workflows with the same name: the newest run across both ids decides.
+WFN2='{"workflows":[{"id":55,"name":"Deploy CD","state":"active"},{"id":57,"name":"Deploy CD","state":"active"}]}'
+setup 3 "$NODEP" "$WFN2" "$(runs "$(run 1 'Deploy CD' push completed success $T1 55)" "$(run 2 'Deploy CD' push completed failure $T2 57)")"
+check 'two workflows of one name, newest run failed' failed:2
+setup 3 "$NODEP" "$WFN2" "$(runs "$(run 1 'Deploy CD' push completed failure $T1 55)" "$(run 2 'Deploy CD' push completed success $T2 57)")"
+check 'two workflows of one name, newest run succeeded' deployed:2
+setup 3 "$NODEP" "$WFN" "$(runs "$(run 1 'Deploy CD' push completed success $T1 55)" "$(run 2 'Deploy CD' push in_progress '' $T2 55)")"
+check 'named workflow, newest run in progress' none
 unset REC
 
 echo "$((total - fails)) of $total checks passed"

@@ -10701,3 +10701,25 @@ Deliberately different:
     One live probe ran `window` on iTerm2 with a command of about 1300
     bytes: a real `claude` started and the launch file was gone. A probe
     with no `claude` exited 10 and closed the tab. No crew run has used it.
+170. **The deploy watch reads every page, by event, and waits for every
+    deploy run — 2026-11-26, `pr-watch.sh`, jerridan/crew#146.**
+    `wf_check()` read one page of 100 runs of the merge commit and judged the
+    newest run whose name matched. On a default branch with scheduled
+    workflows, one merge commit got about 1,000 runs in an hour, almost all
+    `schedule` events. The deploy run, which succeeded, was not on the first
+    page, so the watch printed nothing. In a monorepo, one merge starts one
+    deploy workflow per service, and the watch judged only the newest. Now
+    the default signal reads every page of the `push` runs and of the
+    `workflow_run` runs of the merge commit, and no other event. It prints
+    `deploy-failed` at once for a failed deploy run, and `deployed` when a
+    deploy run succeeded and no run in those two reads is unfinished, so a
+    CI run that can still start a chained deploy holds back the ship word.
+    The text of that `deployed` line gives the count of deploy runs that
+    succeeded. A `Deploy: workflow: <name>` reads every page of that
+    workflow's own runs, of any event, because a repository-wide read with
+    `head_sha` returns 1,000 runs at most. A failed read of the runs makes no
+    `no-deploy` decision, and the timeout still applies. The line format and
+    the exit codes did not change. A chained deploy that GitHub creates some
+    seconds after its CI run ends can miss the set when another deploy run
+    already succeeded. The seeded test covers each rule with a stub `gh`
+    that serves pages and filters by event. No crew run has used it.

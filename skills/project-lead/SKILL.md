@@ -187,7 +187,7 @@ model`, and you act on the other thirteen:
 
 - `environment: <name>`: a GitHub deployment of the merge commit to that
   environment, whose latest status is `success`.
-- `workflow: <name>`: a GitHub Actions run of that workflow, by name, with
+- `workflow: <name>`: the newest run of that workflow, of any event, with
   `head_sha` equal to the merge commit and the conclusion `success`.
 - `none`: the repo has no deploy process. The merge is the ship word.
 - `manual`: the repo deploys where `gh` cannot see, such as a deploy tool

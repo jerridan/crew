@@ -14,6 +14,13 @@
 # It polls every 60 seconds, prints one terminal line (`deployed`,
 # `no-deploy`, `deploy-failed`, `deploy-timeout` or `closed`) and exits. With
 # `deploy-once`, it polls one time and prints a line only when one is due.
+# With `workflow`, it reads every page of that workflow's own runs on the merge
+# commit, of any event, and judges the newest. With no `environment` and no
+# `workflow`, and no GitHub deployment, it judges the set of the `push` and
+# `workflow_run` runs of the merge commit whose name holds `deploy` or
+# `release`: `deploy-failed` at once for a failed run, and `deployed` when one
+# succeeded and no run of the merge is unfinished. A failed read prints
+# nothing. `pr-watch.md`, "The deploy poll", owns these rules.
 # With no `environment` and no `workflow`, a repo with no GitHub deployment
 # and no active workflow whose name or path holds `deploy` or `release` prints
 # `no-deploy` once 2 minutes have passed since the merge, and prints nothing
@@ -55,14 +62,35 @@ case "$PR" in
 esac
 R=${PR#https://github.com/}; R=${R%/pull/*}; N=${PR##*/pull/}; N=${N%%[/?#]*}
 
-# Judge the newest Actions run on the merge commit that passes the jq test in
-# $1, a test on the run object. A success or a failure prints one line and
-# sets `finished`. Any other conclusion is no result yet, and the newest run still wins next poll.
-wf_check() {
-  r=$(gh api "repos/$R/actions/runs?head_sha=$oid&per_page=100" --jq '
-    [.workflow_runs[] | select('"$1"')] | sort_by(.created_at) | last
-    | select(. != null)
-    | "\(.id) \(.conclusion // "null") \(.updated_at) \(.name)"' 2>/dev/null) || r=''
+# The runs of the merge commit, one JSON object per line. Every page is read:
+# `--jq` runs once per page, and each page adds its runs to the stream. Usage:
+# `runs_read <api path with a query>`. A failed read returns the nonzero
+# status of `gh` and prints nothing. The callers map any nonzero status to 2:
+# no result for that poll.
+runs_read() {
+  gh api --paginate "$1" --jq '.workflow_runs[]
+    | {id, name, event, status, conclusion, created_at, updated_at, workflow_id} | tojson' 2>/dev/null
+}
+
+# The named rung: `run.deploy.workflow` names one workflow. Read every page of
+# that workflow's own runs, whatever their event, and judge the newest run. A
+# success or a failure prints one line and sets `finished`. Any other
+# conclusion is no result yet. Returns 2 when a read fails: no result.
+wf_named() {
+  if [ -z "$wf_ids" ]; then
+    # Only a good read with a match is kept: a workflow can appear later.
+    ids=$(gh api --paginate "repos/$R/actions/workflows" --jq '.workflows[]
+      | select(.name == $ENV.DEP_WF) | .id' 2>/dev/null) || return 2
+    wf_ids=$(printf '%s' "$ids" | tr '\n' ' ')
+  fi
+  all=''
+  for id in $wf_ids; do
+    one=$(runs_read "repos/$R/actions/workflows/$id/runs?head_sha=$oid&per_page=100") || return 2
+    all="$all$one"$'\n'
+  done
+  r=$(printf '%s' "$all" | jq -sr '
+    sort_by(.created_at) | last | select(. != null)
+    | "\(.id) \(.conclusion // "null") \(.updated_at) \(.name)"' 2>/dev/null) || return 2
   [ -n "$r" ] || return 0
   seen_deploy=1
   read -r rid rconc rat rname <<< "$r"
@@ -77,8 +105,56 @@ wf_check() {
   return 0
 }
 
+# The default rung: judge the deploy runs of the merge commit. A deploy run is a
+# `push` or `workflow_run` run whose name holds `deploy` or `release`. Two
+# event-filtered reads give the set, so `schedule` runs are never read. A
+# workflow can have more than one run on the merge commit, because a re-run
+# starts a new run. Only the newest run of each workflow counts, by
+# `created_at`: a superseded run does not count. A newest run that failed
+# prints `deploy-failed` at once, for the one that finished last. `deployed`
+# prints when a newest run succeeded and no run of the merge, deploy or not, is
+# unfinished: a CI run can still start a deploy. A cancelled or skipped run
+# neither blocks nor counts. Returns 2 when a read fails: no result.
+wf_default() {
+  push=$(runs_read "repos/$R/actions/runs?head_sha=$oid&event=push&per_page=100") || return 2
+  chain=$(runs_read "repos/$R/actions/runs?head_sha=$oid&event=workflow_run&per_page=100") || return 2
+  r=$(printf '%s\n%s\n' "$push" "$chain" | jq -sr '
+    . as $all
+    | [$all[] | select((.name // "") | test("deploy|release"; "i"))]
+      | group_by(.workflow_id) | map(sort_by(.created_at) | last) as $m
+    | if ($m | length) == 0 then "none"
+      else ($m | map(select(.conclusion == "failure" or .conclusion == "timed_out"
+                            or .conclusion == "startup_failure")) | sort_by(.updated_at) | last) as $f
+        | if $f != null then "seen deploy-failed \($f.id) - \($f.updated_at) \($f.name) \($f.conclusion)"
+          else ($m | map(select(.conclusion == "success")) | sort_by(.updated_at)) as $s
+            | if ($s | length) > 0 and all($all[]; .status == "completed")
+              then ($s | last) as $l
+                | "seen deployed \($l.id) - \($l.updated_at) \($l.name) succeeded; \($s | length) deploy runs succeeded"
+              else "seen wait" end end end' 2>/dev/null) || return 2
+  [ "$r" != none ] || return 0
+  seen_deploy=1
+  case "$r" in
+    "seen wait") ;;
+    *) echo "${r#seen }"; finished=1 ;;
+  esac
+  return 0
+}
+
+# The deploy-timeout line, due when the watch has run past its limit. The
+# timeout counts from the arming time, or from the merge when the record has
+# none. The clock decides it, so a failed read does not stop it.
+deploy_timeout() {
+  late=$(jq -n --arg m "${DEP_SINCE:-$merged_at}" --argjson t "$TIMEOUT" \
+    '((now - ($m | fromdateiso8601)) / 60) > $t' 2>/dev/null) || late=''
+  if [ "$late" = true ]; then
+    if [ -n "$seen_deploy" ]; then what='no deploy finished'; else what='no deploy seen'; fi
+    echo "deploy-timeout $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) $what $TIMEOUT minutes after the watch started"
+    finished=1
+  fi
+}
+
 # What the last good read of the PR showed, kept for a poll whose read fails.
-oid=''; merged_at=''; dep_count=''; wf_has=''; wf_changed=''
+oid=''; merged_at=''; dep_count=''; wf_has=''; wf_changed=''; wf_ids=''
 
 deploy_poll() {
   v=$(gh pr view "$PR" --json state,mergeCommit,mergedAt \
@@ -98,8 +174,9 @@ deploy_poll() {
   [ -n "$oid" ] && [ -n "$merged_at" ] || return 0
   seen_deploy=''
   if [ -n "$DEP_WF" ]; then
-    wf_check '.name == $ENV.DEP_WF'
+    wf_named; rc=$?
     [ -z "$finished" ] || return 0
+    if [ "$rc" = 2 ]; then deploy_timeout; return 0; fi
   else
     if [ -z "$DEP_ENV" ]; then
       # The default signal. Only a nonzero count is kept: a deploy can create
@@ -109,12 +186,14 @@ deploy_poll() {
       fi
       [ -n "$dep_count" ] || return 0
       if [ "$dep_count" = 0 ]; then
-        # No deployment objects. A deploy or release run on the merge commit
-        # is the signal, matched by the run's name. With none, a repo with no
+        # No deployment objects. The deploy and release runs on the merge
+        # commit are the signal, matched by the run's name. With none, a repo with no
         # active deploy workflow, whose merged PR changed no workflow file, has
         # no deploy at all. Otherwise wait 10 minutes for a run to appear.
-        wf_check '(.name // "") | test("deploy|release"; "i")'
+        wf_default; rc=$?
         [ -z "$finished" ] || return 0
+        # A failed read is no result: no no-deploy line from it.
+        if [ "$rc" = 2 ]; then deploy_timeout; return 0; fi
         if [ -z "$seen_deploy" ]; then
           # Only a good read is kept. A failed read keeps the 10-minute wait.
           if [ -z "$wf_has" ]; then
@@ -180,15 +259,7 @@ deploy_poll() {
       fi
     fi
   fi
-  # The timeout counts from the arming time, or from the merge when the
-  # record has none.
-  late=$(jq -n --arg m "${DEP_SINCE:-$merged_at}" --argjson t "$TIMEOUT" \
-    '((now - ($m | fromdateiso8601)) / 60) > $t' 2>/dev/null) || late=''
-  if [ "$late" = true ]; then
-    if [ -n "$seen_deploy" ]; then what='no deploy finished'; else what='no deploy seen'; fi
-    echo "deploy-timeout $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) $what $TIMEOUT minutes after the watch started"
-    finished=1
-  fi
+  deploy_timeout
   return 0
 }
 

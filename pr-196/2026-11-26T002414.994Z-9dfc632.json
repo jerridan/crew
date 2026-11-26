@@ -1,0 +1,2595 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 196,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Park the project lead at a long wait so a wake does not rewrite the build context",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/196"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "7d8b43bb5d9b6e8ea77b7761107caedd25fa3f07",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-196/2026-11-25T235321.367Z-7d8b43b.json",
+      "open": [
+        "f6cc22ca4dba13dd"
+      ],
+      "dismissed": [
+        "190f085597b9285d",
+        "48ce1bdd6197f8a4",
+        "87164ecd7b436c85",
+        "91cf33a6b785c040",
+        "ce69197487bc5804",
+        "e98afdb97881665a",
+        "ed448924a94eaa35"
+      ],
+      "fetch_failed": false
+    },
+    "base": "69bd198a3200805d773062236bbe6dbc7036ed72",
+    "head": "9dfc6320e4c8f46c3e830634ff784b0355bbd3dc",
+    "started_at": "2026-11-26T00:24:14.994Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Park the project lead at a long wait so a wake does not rewrite the build context\n\n\n\n## Summary\n\nA crew project lead that waits before the hand-over (for the usage reset, an orchestrator's pause, or an answer to a question) kept its whole build context open. When it woke after an hour or more, it wrote that whole context to the prompt cache again: 360,000 tokens at the median and up to 962,000 on this machine. Now the project lead \"parks\": it ends its large session and starts a small waiter session with the same name. The waiter wakes only on a real wake and then resumes the run from the record. One wait costs about 150,000 tokens instead, and a message that does not end the wait costs about 35,000.\n\n**Ticket:** N/A (orchestrator item build-wait, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.NNN (number assigned at merge): the park, the 30-minute threshold, the limits and the cost.\n- `skills/project-lead/references/park.md` owns when a project lead parks, the call, the waiter's rules and the wake.\n- `skills/project-lead/references/crew-step.md` owns the `park` and `unpark` command lines, steps and exit codes.\n- `skills/project-lead/references/record-format.md` owns `run.park`, `run.parks`, the `park/` files and `crew-record.py run set|append --if`.\n- `skills/project-lead/references/resume.md` owns the first step of a resume of a parked run.\n- `skills/orchestrator/references/launcher.md` owns `launcher.py window --settings`.\n\n### What changed, by file\n\n- `skills/project-lead/references/park.md` (new): when to park (usage stop with the reset more than 30 minutes away; an orchestrator pause at once; a question after a 30-minute timer), the call, the waiter, the wake.\n- `skills/project-lead/scripts/crew-step.py`: `park` (refusals, `run.park`, a detached helper that writes the waiter prompt, starts the waiter through `launcher.py window`, writes the waiter and the orchestrator item's `launch.tab` and `launch.session_id`, then stops the old session; a failure rolls back) and `unpark` (moves the park to `run.parks`, stops a foreign waiter, writes the orchestrator item on a manual resume).\n- `skills/project-lead/scripts/crew-record.py`: `run set` and `run append` take `--if <dotted.field>=<json>`; a condition that does not hold writes nothing and exits 3.\n- `hooks/session-end.py`: a parked run, and a session retired by a park, is not marked interrupted.\n- `skills/orchestrator/scripts/launcher.py`: `window` takes `--settings` with the meaning of `start --settings`.\n- Tests: `test-crew-step.py` (park, unpark, rollback at each step, a wake during the stop delay, the three-reason park drill), `test-crew-record.py` (`--if`), `hooks/test-session-end.sh` (new), `test-launcher.sh` (`window --settings`).\n- Pointers: `autonomy-contract.md` (the usage limit line), `resume.md`, `record-format.md`, `orchestrator-report.md` (`## A park`), `crew-step.md`, `launcher.md`, `SKILL.md`'s table, `CLAUDE.md`.\n\n### Constraints that applied\n\n- Only the launcher and `crew-usage.py` start a `claude` process: the helper starts the waiter through `launcher.py window`.\n- Every `state.json` write goes through `crew-record.py`: the race-safe waiter write uses the new `--if` condition.\n- `crew-orch.py` stays the only writer of the orchestrator record: the park reads `orchestrator.json` and writes through `crew-orch.py item <id> set launch.<key>`. No `crew-orch.py` code changed.\n- One rule in one file: the three key rules are each in exactly one file (checked by grep).\n- The plugin version and the §15 number are left for the orchestrator: no version bump in this PR, and the finding is numbered `NNN`. This PR changes what the plugin loads, so it needs a version bump at merge.\n\n### How this was verified\n\n- `test-crew-step.py` 259 of 259, `test-crew-record.py` 92 of 92, `hooks/test-session-end.sh` and `hooks/test-session-start.sh` all passed, `test-crew-orch.sh` all passed, `test-window-watch.sh` 110 of 110, `test-launcher.sh` 350 of 350, each on the package head; the red commits failed as expected. No helper process was left running.\n- A Codex plan review of the three plans found 6 blocking issues (a wake racing the helper, a stop after a failed write, a manual resume leaving the orchestrator on a stopped waiter, a rejoin waking a parked run, no hand-off without an orchestrator, a failed usage wait releasing a pause). All six were fixed before code.\n- The cost figures come from 74 project-lead transcripts on this machine (`evidence/wakes.py` in the run's record).\n\n### Known gaps\n\n- A park needs an orchestrator. A hand-started run waits in place as before. This is the current limit; the decision is with the principal, and the code keeps one function (`launch_identity`) where a second source can go.\n- No crew run has parked yet: only the seeded tests ran it. The first live park will show whether the 20-second stop delay fits a real turn.\n- A wait for a working IC cannot park, because the IC dies with the session.\n\n<details><summary>spec.md</summary>\n\n# Spec: a wait before the hand-over does not wake the whole build context\n\n## The idea\n\nA **park** ends the large project-lead session at a long wait and starts a small **waiter** session in its place, with the same session name, the same working directory and the same model. The waiter holds only its first prompt. It waits for the wake: a message, a typed word, or the usage reset. Then it invokes `crew:project-lead --resume <goal-slug>` in its own context, and the run goes on from the record. A wake after hours then rewrites the waiter's small context, not the build context.\n\nThe record already has the file for facts that live only in a conversation: `handover.md` with its nine headings (`record-format.md`). A park writes it too. A new `run.park` object holds the structured pause state.\n\n## Requirements\n\nR1. **A park sequence in one call.** `crew-step.py park <record-dir> --reason <usage|pause|question> [--until <epoch seconds>] --next \"<the next step>\"` writes `run.park` and starts a detached helper, then exits 0 at once. The helper outlives the calling session. It: 1. writes the waiter's first prompt to `<record-dir>/park/prompt-<n>.md` (`<n>` counts parks from 1). It names the record directory, the goal slug and the reference section of R4, and nothing else; 2. starts the waiter with `launcher.py window`, with the session name, the working directory, the model, the terminal and the group of the project lead's session, and, when `run.orchestrator` is set, the `--settings` value of `crew-usage.py settings --cwd <run.repo>`; 3. writes `run.park.waiter` from the launcher's output; 4. when `run.orchestrator` is set, writes the waiter's `tab` and `session_id` into the orchestrator item's `launch` with `crew-orch.py --orch <name> item <id> set launch.<key> <json>`; 5. stops the old session with `launcher.py stop <handle> --name <name>` (or `--session-id <id>`), so the stop's target check holds. It waits first so that the calling turn can end: 20 seconds by default, and a flag sets it for tests. **The working directory** of the waiter is `run.repo`. `SKILL.md`'s \"Take the goal\" writes it from the session's own `git rev-parse --show-toplevel`, so it is the old session's directory. With an orchestrator it equals the item's `launch.worktree`; `park` checks that and exits 1 when they differ, because `crew-orch.py resume` resumes the waiter with `launcher.py resume --worktree <launch.worktree>`. It reads the old session's name, handle, terminal, group and model from the orchestrator record's item `launch` when `run.orchestrator` is set (read only: `crew-orch.py` stays its only writer). With no orchestrator it takes them from flags of `park`; with no handle it starts the waiter and stops nothing, and prints a line that says the old tab stays open. Each step writes one line to `<record-dir>/park/park.log`. A failed start of the waiter stops nothing and leaves `run.park.waiter` `null`. Exit codes: 0 started, 1 a failure before the helper starts (no record, a dirty tree in `run.checkout`, a park already set), 2 usage.\nR2. **An unpark in one call.** `crew-step.py unpark <record-dir> [--by \"<what woke the run>\"]` moves `run.park`, with `woke: {at, by, session_id}`, to the end of the list `run.parks`, sets `run.park` to `null`, and, when `run.park.waiter.session_id` is not `$CLAUDE_CODE_SESSION_ID` and its handle is set, stops that waiter with the stop's target check. A record with no park exits 0 and changes nothing.\nR3. **`run.park` and `run.parks`** in `record-format.md`: `run.park` is `null` or `{reason, by, at, until, next, from_session, waiter, prompt}`; `waiter` is `null` or `{name, session_id, tab, terminal, tab_group, model, started_at}`. `from_session` is the id of the session that parked. `prompt` is the path of the waiter's prompt file. `next` is the step the resumed run takes first. `by` is who paused (`usage`, the principal's name, or `project-lead` for a question). `until` is epoch seconds or `null`. `run.parks` is the history, one entry per ended park. `handover.md`'s rule says a park writes it too, before the `park` call, with every heading filled as at the hand-over. `run.park` owns the pause state: at a park, heading 8 `## Pause state` holds one line that points at `run.park`. `record-format.md`'s tree gets the `park/` directory: `prompt-<n>.md` and `park.log`.\nR4. **The waiter's rules** live in one reference section. The waiter: answers its first prompt with one line; arms `crew-usage.py wait` as a background Bash command when `run.park.reason` is `usage` or `pause` and the charter has a `Usage limit:` line; on a message or typed text that is only a pause or stop word, stays parked; on any other message, typed text or the exit of `wait`, invokes `crew:project-lead` with `--resume <goal-slug>`. The message stays in its context, and the resumed run acts on it.\nR5. **When a project lead parks**, in one reference section:\n  - at `stopped` or a pause message for the usage window, after \"The usage limit line\" steps 1 to 4: park with `--reason usage` when the reset is more than 30 minutes away, else arm `wait` in place as today;\n  - on a pause or stop message from an orchestrator: commit, then park with `--reason pause` at once, whatever its length;\n  - after an escalation is sent, when no IC works and no background task the run needs is armed: arm a 30-minute background timer; an answer before it goes on in place; the timer's exit parks with `--reason question`;\n  - never while an IC works or a worktree is dirty: an IC dies with the session. Tell each IC to commit and stop first, as the usage limit line says.\n  - every goal-run path parks the same way: the simple, light, full and investigation paths. A `/crew:review` run does not park (non-goals). The 30 minutes and the reason (the prompt cache's time to live) are in `docs/design.md` only; the reference states the number.\nR6. **The resume of a parked run.** `resume.md`: a record whose `run.park` is set runs `crew-step.py unpark` first, then reads `handover.md` and the last `run.parks` entry with the rest of the record, then re-enters as today. A usage level still at `stopped` (`crew-usage.py check` exits 20) parks again.\nR7. **The `SessionEnd` hook** treats a run whose `run.park` is set as not live: it writes no `interrupted`. It still orphans nothing else. A seeded test covers a parked run, an unparked live run and a delivered run.\nR8. **`launcher.py window --settings <file-or-json>`**, with the meaning and the checks of `start`'s `--settings`. Without it, the `<json>` stays `{\"remoteControlAtStartup\": false}`. `test-launcher.sh` covers both.\nR9. **With an orchestrator**, the orchestrator reaches the waiter by the same session name, so its `SendMessage`, its pause word and its resume word work unchanged, and `crew-orch.py resume` after a machine restart resumes the waiter's conversation from the updated `launch.session_id`. `orchestrator-report.md` names the park's two `item set` writes.\nR10. **The rule** \"only the launcher and `crew-usage.py` start a `claude` process\" holds: the helper starts the waiter only through `launcher.py`.\nR11. **Documentation**: a new reference owns the park (`references/park.md`): when, the call, the waiter, the wake. `crew-step.md` owns the `park` and `unpark` command lines. `SKILL.md`'s table, `CLAUDE.md`'s layout and build state, `autonomy-contract.md`'s usage limit line, `resume.md`, `record-format.md`, `orchestrator-report.md` and `launcher.md` point at it. A `docs/design.md` §15 finding with a placeholder number records the design and the cost figures. Version fields keep a placeholder for the orchestrator.\n\n## Acceptance criteria\n\n- A1 (R1, R2, R3, R10): `python3 skills/project-lead/scripts/test-crew-step.py` passes with new checks that seed a record and stub `launcher.py`, `crew-orch.py` and `crew-usage.py`, and show: `park` writes `run.park`, the stub launcher gets `window` with the name, cwd, model and `--settings`, then `stop` with the target flag, in that order; the orchestrator item gets the two `set` calls; a failed `window` gets no `stop`; `unpark` moves the park to `run.parks` and stops a foreign waiter only.\n- A2 (R7): a new `hooks/test-session-end.sh` passes and shows the three cases.\n- A3 (R8): `bash skills/orchestrator/scripts/test-launcher.sh` passes with a check that `window --settings` puts the value in the tab command.\n- A4 (R4, R5, R6, R9, R11): each rule in R4 to R6 is in exactly one file, found by `grep -rn` for its key phrase; every other file points at it.\n- A5: the existing suites still pass: test-crew-step.py, test-launcher.sh, test-crew-orch.sh, test-window-watch.sh, test-session-start.sh.\n- A1b (charter acceptance 1): a \"park drill\" in `test-crew-step.py`, one per reason (`usage`, `pause`, `question`): seed a record that holds a package, a `plans/` file, `run.plan_review`, `run.review_pending`, an open escalation (for `question`) and a `handover.md` with a standing word; run `park` as session A; check that the stub launcher got `window` before `stop` and that `stop` targets session A; run `unpark` as session B, the waiter; check that `run.park` is `null`, `run.parks` holds the park with `woke`, no `stop` targeted B, and every seeded fact is unchanged on disk.\n- A4 key phrases, each found in exactly one file under `skills/`: \"parks with `--reason usage`\" (R5), \"The waiter\" heading (R4), \"runs `crew-step.py unpark` first\" (R6).\n- A6: the report gives the before and after token cost of one wake, with the method.\n\n## Global constraints\n\n- Prose: ASD-STE100 and `skills/project-lead/references/writing-standard.md`.\n- A rule lives in one file (`CLAUDE.md` \"Authority\").\n- No version bump and no §15 number: placeholders.\n- Code: Python 3 standard library, as the sibling scripts.\n- Tests stub every external command; no test starts `claude`.\n- The project lead tells the orchestrator, before the build, each change to `skills/orchestrator/`, `orchestrator-report.md` and the launcher.\n\n## Non-goals\n\n- A wait for a working IC: the IC dies with the session, so the project lead does not park while an IC works.\n- Waits after the hand-over: PR 188 covers them.\n- A `/crew:review` run's waits: a review run is not a build, and its gate is after its first review. A later item can take it.\n- The other waits found, all short and in the foreground: the plan review's `plan-review.py run` (minutes, and the project lead gives the start word itself), the goal check's `review-run.py` at the hand-over, and `crew-step.py verify`. None waits for a person or for the usage window.\n- A change to `crew-orch.py` code: `item <id> set launch.<key>` exists.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take? Route: precedent Answer: change path Citation: a wait before the hand-over does not wake the whole build context Confidence: high Timestamp: 2026-11-25T22:43:12Z\n\n## Does the work take the light path? Route: precedent Answer: no: the change is more than one package (a crew-step.py park sequence, a launcher change, a hook change and the prose) Citation: scout-1's report and charter.md Confidence: high Timestamp: 2026-11-25T22:46:40Z\n\n## Spec critic r1: adjudication Route: precedent Answer: Applied 1-7 and 9 to spec.md; declined 8. Citation: reviews/spec-critic-r1.md Confidence: high Labels: 1 suggestion (run.repo is the session cwd, now stated, with a check against launch.worktree); 2 blocking (park drill per reason added as A1b); 3 blocking (other waits listed as non-goals); 4 suggestion; 5 suggestion; 6 suggestion; 7 suggestion; 8 suggestion, declined: the prose and code packages run in parallel, so the field names are the shared interface; 9 suggestion. Timestamp: 2026-11-25T22:50:26Z\n\n## Preference sweep: what does the principal want that the repo cannot say? Route: preference Answer: none Citation: charter.md and spec.md Confidence: high Questions: the 30-minute park threshold and keeping a hand-started tab open with no orchestrator; both reversible, decided in spec.md R1 and R5. Timestamp: 2026-11-25T22:50:31Z\n\n## Which worktree base does this run use? Route: precedent Answer: /Users/jerridan/.claude/crew/build-wait-1a70 Citation: full-path.md launch check 1: /Users/jerridan/.claude/crew/build-wait-1a70: add, status and remove passed Confidence: high Timestamp: 2026-11-25T22:50:47Z\n\n## Split critic d1 r1: adjudication Route: precedent Answer: Applied all three to split.md. Citation: reviews/d1-split-critic-r1.md Confidence: high Labels: 1 suggestion (--by added); 2 suggestion (the launcher.md pointer moves to integration); 3 suggestion (exact crew-record calls, unpark's --session-id, the --settings condition, the path from __file__). Timestamp: 2026-11-25T22:52:33Z\n\n## How does the IC get ic-contract.md? Route: precedent Answer: The spawn prompt tells the IC to Read the file whole as its first step, by absolute path, in place of pasting its text. Citation: full-path.md Spawn the ICs: inject the contract as text Confidence: medium Why: pasting 278 lines into the project lead's own context twice costs more than a Read by the IC; a Read by absolute path does not depend on skills: or the agent body, which is what design §15.20d warns about. Timestamp: 2026-11-25T22:52:46Z\n\n## Plan review: which findings does the run act on? Route: precedent Answer: 6 of 6 findings sent to the ICs Citation: reviews/plan-review-r1.md Confidence: high Finding: F1 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F2 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F3 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F4 blocking (reviewer: blocking) — sent to ic-park-prose-r1 Finding: F5 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F6 blocking (reviewer: blocking) — sent to ic-park-prose-r1 Timestamp: 2026-11-25T22:58:29Z\n\n## Where does the guarded write of run.park.waiter live? Route: precedent Answer: In crew-record.py, as a compare option on run set; park-step's file set grows by crew-record.py, test-crew-record.py and record-format.md (the prose package is integrated, so no territory conflicts). Citation: record-format.md: every state.json write is a crew-record.py call; crew-step.md: Every state.json write is a crew-record.py call Confidence: high Timestamp: 2026-11-25T23:08:49Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 5
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/session-end.py",
+        "hunks": 2
+      },
+      {
+        "path": "hooks/test-session-end.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/crew-step.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/park.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-step.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/scripts/spend.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-record.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-step.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/scripts/test-spend.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "New park/unpark feature with a detached helper process, session lifecycle hook changes, conditional record writes, launcher interface change and cost accounting — concurrency, state and public-interface logic.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/project-lead/scripts/crew-step.py: cmd_park_helper, park_holder, end_park (rollback and wake races)",
+        "skills/project-lead/scripts/crew-step.py: cmd_unpark and caller_tab (tab selection, idempotent rerun)",
+        "hooks/session-end.py: is_retired, park_waiter_id and interrupt_run (wrongly interrupting or ignoring a dying run)",
+        "skills/project-lead/scripts/crew-record.py: take_conditions, check_conditions, exit code 3 and --if parsing",
+        "skills/orchestrator/scripts/launcher.py: window --settings now accepted",
+        "skills/project-lead/scripts/spend.py: waiter_ids and dedup of session ids"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "note": "new park, park-helper and unpark commands; detached subprocess, record rewrites, stops sessions"
+        },
+        {
+          "file": "hooks/session-end.py",
+          "note": "retired-session and waiter logic changes when a run is marked interrupted"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-record.py",
+          "note": "new --if conditional on run set and run append; exit 3"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "window gains --settings; previously forced default"
+        },
+        {
+          "file": "skills/project-lead/scripts/spend.py",
+          "note": "prices waiter sessions; dedups ids"
+        },
+        {
+          "file": "hooks/test-session-end.sh",
+          "note": "new seeded test of the hook"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "note": "large new park/unpark tests; R20 write check loosened to allow 'park'"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-spend.py",
+          "note": "new test"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-record.py",
+          "note": "tests for --if"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "window --settings tests"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "resume of parked item test"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump"
+        },
+        {
+          "file": "skills/project-lead/references/park.md",
+          "note": "new reference; instructions the waiter and project lead follow"
+        },
+        {
+          "file": "skills/project-lead/references/crew-step.md",
+          "note": "documents park/unpark command lines"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "documents run.park, run.parks and --if"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "design entry 168"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "doc index updates"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "pointers to park.md"
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "park sections"
+        },
+        {
+          "file": "skills/project-lead/references/resume.md",
+          "note": "unpark on resume"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "reference table row"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "window --settings doc"
+        }
+      ],
+      "summary": "Adds a \"park\" feature: a project lead with an orchestrator ends its large session at a long wait and a small waiter session with the same name takes over, via new crew-step.py park/unpark commands and a detached helper. Supporting changes include a conditional `--if` write in crew-record.py, `--settings` on launcher.py window, SessionEnd hook handling for retired sessions and waiters, and spend.py pricing of waiter sessions. Seeded tests and docs are added."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: New park/unpark feature with a detached helper process, session lifecycle hook changes, conditional record writes, launcher interface change and cost accounting — concurrency, state and public-interface logic.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/park.md",
+            "start_line": 85,
+            "end_line": 89,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "park.md says resume.md owns the first step of a parked run's resume, but this diff does not change resume.md, so no file owns the unpark-first rule.",
+            "evidence": "owns what the resumed run does first.",
+            "suggested_fix": "Add the step \"runs `crew-step.py unpark` first\" to resume.md. Also add the pointers in autonomy-contract.md, launcher.md and SKILL.md.",
+            "explanation": "CLAUDE.md's \"a rule lives in one file\" convention needs the owning file to hold the rule. resume.md is not in the changed files, so the pointer leads to nothing.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10064,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 51266,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0051361,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 628,
+              "cacheReadInputTokens": 10293,
+              "cacheCreationInputTokens": 50775,
+              "webSearchRequests": 0,
+              "costUSD": 0.4208266,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 304,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.42596269999999997
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 1235,
+            "end_line": 1241,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "If the `launch.session_id` write fails after the `launch.tab` write worked, the rollback stops the waiter but leaves the orchestrator item's `launch.tab` on the stopped waiter's tab.",
+            "evidence": "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)\n                if done.returncode != 0:\n                    return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "suggested_fix": "In the rollback, write the item's old `launch.tab` (identity['handle']) back when the `launch.tab` write had already worked, or write both keys in one call.",
+            "explanation": "`fail()` only rolls back the state.json park and stops the waiter. The item keeps the waiter's tab, so the orchestrator's focus and stop calls aim at a dead tab while the old session goes on.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 1235,
+            "end_line": 1245,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The helper's orch writes have no condition. An unpark by the old session that runs at the same time can be overwritten, so the item names the waiter that this unpark stopped.",
+            "evidence": "        elif orch:\n            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+            "suggested_fix": "After the orch writes, check `park_holder` again. If another session woke the run, write that session's values back, or let the unpark write the item last.",
+            "explanation": "The unpark reads `park.waiter`, stops the waiter and writes its own id and tab, but the helper's later `item set` calls can land after it. `stop_old` then skips, and the item ends on a stopped waiter.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 1104,
+            "end_line": 1111,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The rollback entry is built from the helper's first copy of the park, where `waiter` is null. A waiter that started and then got stopped is never named in `run.parks`, so `spend.py` does not price it.",
+            "evidence": "    entry = dict(park, failed=failed)",
+            "suggested_fix": "Pass the started waiter to `end_park` and store it in the failed entry.",
+            "explanation": "`waiter_ids` only reads `park.waiter`/`parks[].waiter`, so the cost of a waiter that ran and was rolled back is lost.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 1162,
+            "end_line": 1173,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "If `end_park` fails (it returns \"failed\"), `run.park` stays set and `fail()` still stops the waiter. The `SessionEnd` hook then treats the live old session as retired, so its later death never marks the run interrupted.",
+            "evidence": "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+            "suggested_fix": "Retry the rollback, or log the state clearly and do not leave a park that names a live session as retired.",
+            "explanation": "`is_retired` returns True for `run.park.from_session`, so a park that did not roll back makes the old session's real end invisible.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 84060,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 51270,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0051365000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 16,
+              "outputTokens": 7542,
+              "cacheReadInputTokens": 493685,
+              "cacheCreationInputTokens": 69450,
+              "webSearchRequests": 0,
+              "costUSD": 0.805241,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 3690,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.8103775
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/record-format.md",
+            "start_line": 755,
+            "end_line": 755,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The `parks` row says that only a park that failed after the waiter started holds `failed`, but the code also writes `failed` for failures before the waiter starts.",
+            "evidence": "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+            "suggested_fix": "Write: \"A park that failed holds `failed: {step, at, error}` in place of `woke`.\"",
+            "explanation": "`end_park` writes a `failed` entry for the `helper`, `prompt`, `settings` and `window` failures, and none of these has a waiter; `crew-step.md` and `test-session-end.sh` both seed a failed entry with `waiter: null`.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 16231,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 51278,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0051373,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 977,
+              "cacheReadInputTokens": 132734,
+              "cacheCreationInputTokens": 51596,
+              "webSearchRequests": 0,
+              "costUSD": 0.45887880000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 377,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.46401610000000004
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 1170,
+            "end_line": 1185,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "When the rollback itself fails (end_park returns \"failed\"), the helper still stops the waiter, while run.park stays set and points at that dead waiter.",
+            "evidence": "        stop_waiter(waiter)",
+            "suggested_fix": "Stop the waiter only when end_park returned \"moved\". When it returned \"failed\", keep the waiter and go on to the old-session stop, or log that the record needs repair.",
+            "explanation": "The old session is not stopped and the record still says the run is parked. The SessionEnd hook already ignores the old session's end because it is the from_session, so the run is left with no live session and with no interrupted mark.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 19728,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 77905,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0078000000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2346,
+              "cacheReadInputTokens": 189304,
+              "cacheCreationInputTokens": 80762,
+              "webSearchRequests": 0,
+              "costUSD": 0.3654504,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1563,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3732503999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7531,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 51254,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0051349,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 326,
+              "cacheReadInputTokens": 10487,
+              "cacheCreationInputTokens": 50763,
+              "webSearchRequests": 0,
+              "costUSD": 0.4147294,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 76,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4198643
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/test-crew-step.py",
+            "start_line": 1556,
+            "end_line": 1557,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The R20 source-grep check was loosened: any write-mode open() line containing \"park\" now passes, so a new unrelated write to a park-named path would pass.",
+            "evidence": "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+            "suggested_fix": "Match the specific park_prompt and park_log writes instead of any line containing \"park\".",
+            "explanation": "A broader substring match weakens the guard that the script writes only its own files.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/test-crew-step.py",
+            "start_line": 1550,
+            "end_line": 1550,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The check greps the source for a test switch name that nothing else defines, so it restates the code and checks no behaviour.",
+            "evidence": "check(\"no test switch CREW_PARK_TEST_FAIL in the script\", bool(text) and \"CREW_PARK_TEST_FAIL\" not in text)",
+            "explanation": "A grep for an absent identifier proves nothing about park behaviour.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8925,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 51274,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0051374,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1072,
+              "cacheReadInputTokens": 73311,
+              "cacheCreationInputTokens": 51459,
+              "webSearchRequests": 0,
+              "costUSD": 0.2238951,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 442,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2290325
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/references/park.md",
+          "start_line": 85,
+          "end_line": 89,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "park.md says resume.md owns the first step of a parked run's resume, but this diff does not change resume.md, so no file owns the unpark-first rule.",
+          "evidence": "owns what the resumed run does first.",
+          "suggested_fix": "Add the step \"runs `crew-step.py unpark` first\" to resume.md. Also add the pointers in autonomy-contract.md, launcher.md and SKILL.md.",
+          "explanation": "CLAUDE.md's \"a rule lives in one file\" convention needs the owning file to hold the rule. resume.md is not in the changed files, so the pointer leads to nothing.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "runs `crew-step.py unpark` first (`crew-step.md` says what it writes), then",
+            "`resume.md`\nowns what the resumed run does first."
+          ],
+          "rationale": "resume.md at head contains \"runs `crew-step.py unpark` first\", so the pointer in park.md leads to the owning file. The finding's premise, that this change leaves resume.md unchanged, is wrong. The diff shown only covers park.md; the PR description lists resume.md as changed.",
+          "score": 3,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "owns what the resumed run does first.",
+            "**A record whose `run.park` is set was parked** (`park.md`). The session",
+            "runs `crew-step.py unpark` first (`crew-step.md` says what it writes), then"
+          ],
+          "rationale": "The claim is false. At the head commit, resume.md holds the unpark-first rule: it says a record whose `run.park` is set \"runs `crew-step.py unpark` first\". So the pointer in park.md leads to a file that owns the rule.",
+          "score": 2,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "owns what the resumed run does first.",
+            "**A record whose `run.park` is set was parked** (`park.md`). The session",
+            "runs `crew-step.py unpark` first (`crew-step.md` says what it writes), then"
+          ],
+          "rationale": "The claim is false. At the head commit, resume.md holds the unpark-first rule: it says a record whose `run.park` is set \"runs `crew-step.py unpark` first\". So the pointer in park.md leads to a file that owns the rule.",
+          "score": 2,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/record-format.md",
+          "start_line": 755,
+          "end_line": 755,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The `parks` row says that only a park that failed after the waiter started holds `failed`, but the code also writes `failed` for failures before the waiter starts.",
+          "evidence": "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+          "suggested_fix": "Write: \"A park that failed holds `failed: {step, at, error}` in place of `woke`.\"",
+          "explanation": "`end_park` writes a `failed` entry for the `helper`, `prompt`, `settings` and `window` failures, and none of these has a waiter; `crew-step.md` and `test-session-end.sh` both seed a failed entry with `waiter: null`.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+            "out.fail(\"helper\", str(exc))\n        end_park(rec, park, {\"step\": \"helper\", \"at\": utc_now(), \"error\": str(exc)}, out.line)"
+          ],
+          "rationale": "The code calls end_park with failed for the \\\"helper\\\" step, which fails before any waiter starts, and `fail(step, ...)` does the same for other steps. So the doc's \\\"after the waiter started\\\" is too narrow.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+            "out.fail(\"helper\", str(exc))\n        end_park(rec, park, {\"step\": \"helper\", \"at\": utc_now(), \"error\": str(exc)}, out.line)"
+          ],
+          "rationale": "The code calls end_park with failed for the \\\"helper\\\" step, which fails before any waiter starts, and `fail(step, ...)` does the same for other steps. So the doc's \\\"after the waiter started\\\" is too narrow.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "start_line": 1556,
+          "end_line": 1557,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The R20 source-grep check was loosened: any write-mode open() line containing \"park\" now passes, so a new unrelated write to a park-named path would pass.",
+          "evidence": "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+          "suggested_fix": "Match the specific park_prompt and park_log writes instead of any line containing \"park\".",
+          "explanation": "A broader substring match weakens the guard that the script writes only its own files.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "bool(text) and all(\"worktrees\" in x or \"patch\" in x or \"park\" in x for x in writes))"
+          ],
+          "rationale": "The substring check now also accepts any write line containing \\\"park\\\", so it is a little looser. This is a deliberate extension for the new park files, and the existing \\\"worktrees\\\" and \\\"patch\\\" matches were already equally coarse. The consequence is small.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+            "bool(text) and all(\"worktrees\" in x or \"patch\" in x or \"park\" in x for x in writes))",
+            "with open(park_prompt, \"w\", encoding=\"utf-8\") as handle:"
+          ],
+          "rationale": "The change adds `or \"park\" in x` to the R20 guard, so any write-mode open() line that holds the substring \"park\" passes. In a script full of park_* names, this is broader than the one actual write, `open(park_prompt, \"w\", ...)`. The old guard was already a loose substring match (\"patch\", \"worktrees\"), so this widens a weak check a little and does not break anything. It is a cheap fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+            "bool(text) and all(\"worktrees\" in x or \"patch\" in x or \"park\" in x for x in writes))",
+            "with open(park_prompt, \"w\", encoding=\"utf-8\") as handle:"
+          ],
+          "rationale": "The change adds `or \"park\" in x` to the R20 guard, so any write-mode open() line that holds the substring \"park\" passes. In a script full of park_* names, this is broader than the one actual write, `open(park_prompt, \"w\", ...)`. The old guard was already a loose substring match (\"patch\", \"worktrees\"), so this widens a weak check a little and does not break anything. It is a cheap fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "start_line": 1550,
+          "end_line": 1550,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The check greps the source for a test switch name that nothing else defines, so it restates the code and checks no behaviour.",
+          "evidence": "check(\"no test switch CREW_PARK_TEST_FAIL in the script\", bool(text) and \"CREW_PARK_TEST_FAIL\" not in text)",
+          "explanation": "A grep for an absent identifier proves nothing about park behaviour.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"no test switch CREW_PARK_TEST_FAIL in the script\", bool(text) and \"CREW_PARK_TEST_FAIL\" not in text)",
+            "check(\"R19 no Skill call in the script\", bool(text) and \"Skill\" not in text)"
+          ],
+          "rationale": "The check is a source grep for an absent identifier, as the finding says. It follows the file's existing R17/R19/R20 grep guards, which keep test-only switches out of the production script, so it is deliberate and harmless.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"no test switch CREW_PARK_TEST_FAIL in the script\", bool(text) and \"CREW_PARK_TEST_FAIL\" not in text)",
+            "# --- greps of the script: R17, R19, R20 ------------------------------------"
+          ],
+          "rationale": "This is true: `CREW_PARK_TEST_FAIL` appears in the repo only on this test line, so the check is a source grep and tests no park behaviour. But it sits in a section of the test file that already holds such source greps (R17, R19, R20), and it works as a cheap guard that keeps a test-only switch out of the shipped script, so it gives no wrong result and is not worth the author's time.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"no test switch CREW_PARK_TEST_FAIL in the script\", bool(text) and \"CREW_PARK_TEST_FAIL\" not in text)",
+            "# --- greps of the script: R17, R19, R20 ------------------------------------"
+          ],
+          "rationale": "This is true: `CREW_PARK_TEST_FAIL` appears in the repo only on this test line, so the check is a source grep and tests no park behaviour. But it sits in a section of the test file that already holds such source greps (R17, R19, R20), and it works as a cheap guard that keeps a test-only switch out of the shipped script, so it gives no wrong result and is not worth the author's time.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 1170,
+          "end_line": 1185,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "When the rollback itself fails (end_park returns \"failed\"), the helper still stops the waiter, while run.park stays set and points at that dead waiter.",
+          "evidence": "        stop_waiter(waiter)",
+          "suggested_fix": "Stop the waiter only when end_park returned \"moved\". When it returned \"failed\", keep the waiter and go on to the old-session stop, or log that the record needs repair.",
+          "explanation": "The old session is not stopped and the record still says the run is parked. The SessionEnd hook already ignores the old session's end because it is the from_session, so the run is left with no live session and with no interrupted mark.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)",
+            "held, woke_by = park_holder(rec, park) if ended == \"gone\" else (None, None)",
+            "        stop_waiter(waiter)"
+          ],
+          "rationale": "When end_park returns \\\"failed\\\", fail() still calls stop_waiter, so run.park stays set and points at a stopped waiter. This needs a double failure. The claim that no live session remains is overstated, because the old session is not stopped on this path.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "held, woke_by = park_holder(rec, park) if ended == \"gone\" else (None, None)",
+            "        stop_waiter(waiter)",
+            "    if moved.returncode != 0:\n        say(\"%s FAIL rollback: %s\" % (utc_now(), err(moved)))\n        return \"failed\"",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)"
+          ],
+          "rationale": "The claim holds: when end_park returns \"failed\", `held` is None and the helper still stops the waiter. On the fail(\"orch\") path, run.park is left set with park.waiter naming the stopped waiter. But this needs two failures in a row: an orchestrator write fails, then a crew-record.py write fails. The finding also says the run is left with no live session, and that part is wrong: the fail path never calls stop_old, so the old session stays open. A later unpark can still repair the record.",
+          "score": 68,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "held, woke_by = park_holder(rec, park) if ended == \"gone\" else (None, None)",
+            "        stop_waiter(waiter)",
+            "    if moved.returncode != 0:\n        say(\"%s FAIL rollback: %s\" % (utc_now(), err(moved)))\n        return \"failed\"",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)"
+          ],
+          "rationale": "The claim holds: when end_park returns \"failed\", `held` is None and the helper still stops the waiter. On the fail(\"orch\") path, run.park is left set with park.waiter naming the stopped waiter. But this needs two failures in a row: an orchestrator write fails, then a crew-record.py write fails. The finding also says the run is left with no live session, and that part is wrong: the fail path never calls stop_old, so the old session stays open. A later unpark can still repair the record.",
+          "score": 68,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 1235,
+          "end_line": 1241,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "If the `launch.session_id` write fails after the `launch.tab` write worked, the rollback stops the waiter but leaves the orchestrator item's `launch.tab` on the stopped waiter's tab.",
+          "evidence": "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)\n                if done.returncode != 0:\n                    return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+          "suggested_fix": "In the rollback, write the item's old `launch.tab` (identity['handle']) back when the `launch.tab` write had already worked, or write both keys in one call.",
+          "explanation": "`fail()` only rolls back the state.json park and stops the waiter. The item keeps the waiter's tab, so the orchestrator's focus and stop calls aim at a dead tab while the old session goes on.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for key in (\"launch.tab\", \"launch.session_id\"):",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "stop_waiter(waiter)"
+          ],
+          "rationale": "The loop writes launch.tab first. If the launch.session_id write then fails, fail() ends the park and stops the waiter, but it never restores the item's old launch.tab. The item is left pointing at the dead waiter tab while the old session keeps running.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for key in (\"launch.tab\", \"launch.session_id\"):",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "stop_waiter(waiter)"
+          ],
+          "rationale": "The loop writes launch.tab first. If the launch.session_id write then fails, fail() ends the park and stops the waiter, but it never restores the item's old launch.tab. The item is left pointing at the dead waiter tab while the old session keeps running.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 1235,
+          "end_line": 1245,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The helper's orch writes have no condition. An unpark by the old session that runs at the same time can be overwritten, so the item names the waiter that this unpark stopped.",
+          "evidence": "        elif orch:\n            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+          "suggested_fix": "After the orch writes, check `park_holder` again. If another session woke the run, write that session's values back, or let the unpark write the item last.",
+          "explanation": "The unpark reads `park.waiter`, stops the waiter and writes its own id and tab, but the helper's later `item set` calls can land after it. `stop_old` then skips, and the item ends on a stopped waiter.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "elif orch:\n            for key in (\"launch.tab\", \"launch.session_id\"):",
+            "done = orch_set(orch, key, value)",
+            "if held == \"woke\" and woke_by == park.get(\"from_session\"):"
+          ],
+          "rationale": "The helper's orch_set writes have no --if condition, and nothing re-checks park_holder afterwards. An unpark by the old session between the waiter write and these writes stops the waiter and writes the old ids, then the helper overwrites them. stop_old then skips, so the item names the stopped waiter. The window is narrow, so this is a real bug on an unusual path.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+            "        for key, value in ((\"launch.session_id\", caller), (\"launch.tab\", tab)):\n            done = orch_set(orch, key, value)",
+            "        stopped = run([sys.executable, LAUNCHER, \"stop\", waiter[\"tab\"], \"--session-id\", waiter[\"session_id\"]])",
+            "        if held == \"woke\" and woke_by == park.get(\"from_session\"):\n            log(\"ok\", \"stop\", \"skipped, the old session %s woke the run\" % woke_by)\n            return"
+          ],
+          "rationale": "After the guarded park.waiter write, the helper writes launch.tab and launch.session_id with no check of the record. An unpark by the old session that read the waiter stops it and writes its own values, and these can be overwritten by the helper's later writes. stop_old then skips, so the item names a stopped waiter. The race window is narrow, but nothing in the code prevents it.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+            "        for key, value in ((\"launch.session_id\", caller), (\"launch.tab\", tab)):\n            done = orch_set(orch, key, value)",
+            "        stopped = run([sys.executable, LAUNCHER, \"stop\", waiter[\"tab\"], \"--session-id\", waiter[\"session_id\"]])",
+            "        if held == \"woke\" and woke_by == park.get(\"from_session\"):\n            log(\"ok\", \"stop\", \"skipped, the old session %s woke the run\" % woke_by)\n            return"
+          ],
+          "rationale": "After the guarded park.waiter write, the helper writes launch.tab and launch.session_id with no check of the record. An unpark by the old session that read the waiter stops it and writes its own values, and these can be overwritten by the helper's later writes. stop_old then skips, so the item names a stopped waiter. The race window is narrow, but nothing in the code prevents it.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 1104,
+          "end_line": 1111,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The rollback entry is built from the helper's first copy of the park, where `waiter` is null. A waiter that started and then got stopped is never named in `run.parks`, so `spend.py` does not price it.",
+          "evidence": "    entry = dict(park, failed=failed)",
+          "suggested_fix": "Pass the started waiter to `end_park` and store it in the failed entry.",
+          "explanation": "`waiter_ids` only reads `park.waiter`/`parks[].waiter`, so the cost of a waiter that ran and was rolled back is lost.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "entry = dict(park, failed=failed)",
+            "ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)",
+            "waiter = park.get(\"waiter\") if isinstance(park, dict) else None"
+          ],
+          "rationale": "end_park builds the entry from the helper's original park, whose waiter is None. The waiter is not added on the fail(..., waiter) paths (record or orch failure), so a started and stopped waiter is never in run.parks. spend.py waiter_ids only reads park.waiter, so it will not price that waiter.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "entry = dict(park, failed=failed)",
+            "\"waiter\": None}",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "waiter = park.get(\"waiter\") if isinstance(park, dict) else None",
+            "parks = [run.get(\"park\")] + (run.get(\"parks\") if isinstance(run.get(\"parks\"), list) else [])"
+          ],
+          "rationale": "The claim holds. In the helper, `fail` calls `end_park` with the `park` dict passed in at launch, where `waiter` is None. So when the rollback comes after the window starts (the record or orch step fails), the `run.parks` entry has `waiter: null`, even when `park.waiter` was already written to state. `spend.py`'s `waiter_ids` gets waiter ids only from `park.waiter` and `parks[].waiter`, so it never prices that waiter. This is a cost-accounting gap on an unusual rollback path.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "entry = dict(park, failed=failed)",
+            "\"waiter\": None}",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "waiter = park.get(\"waiter\") if isinstance(park, dict) else None",
+            "parks = [run.get(\"park\")] + (run.get(\"parks\") if isinstance(run.get(\"parks\"), list) else [])"
+          ],
+          "rationale": "The claim holds. In the helper, `fail` calls `end_park` with the `park` dict passed in at launch, where `waiter` is None. So when the rollback comes after the window starts (the record or orch step fails), the `run.parks` entry has `waiter: null`, even when `park.waiter` was already written to state. `spend.py`'s `waiter_ids` gets waiter ids only from `park.waiter` and `parks[].waiter`, so it never prices that waiter. This is a cost-accounting gap on an unusual rollback path.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 1162,
+          "end_line": 1173,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "If `end_park` fails (it returns \"failed\"), `run.park` stays set and `fail()` still stops the waiter. The `SessionEnd` hook then treats the live old session as retired, so its later death never marks the run interrupted.",
+          "evidence": "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+          "suggested_fix": "Retry the rollback, or log the state clearly and do not leave a park that names a live session as retired.",
+          "explanation": "`is_retired` returns True for `run.park.from_session`, so a park that did not roll back makes the old session's real end invisible.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)",
+            "if isinstance(park, dict) and park.get(\"from_session\") == session_id:",
+            "return \"failed\""
+          ],
+          "rationale": "When end_park returns \"failed\", run.park stays set and fail() still stops the waiter. The hook's is_retired treats the old session as retired while run.park names it. Its later death would then not be marked interrupted. This needs a record write to fail during rollback, so it is rare.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if moved.returncode != 0:\n        say(\"%s FAIL rollback: %s\" % (utc_now(), err(moved)))\n        return \"failed\"",
+            "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+            "        stop_waiter(waiter)",
+            "    park = run.get(\"park\")\n    if isinstance(park, dict) and park.get(\"from_session\") == session_id:\n        return True",
+            "        if not is_live(run) or is_retired(run, session_id):\n            return False"
+          ],
+          "rationale": "When `end_park` returns \"failed\", `run.park` stays set, `fail()` still stops the waiter, and `is_retired` in session-end.py returns True for `run.park.from_session`. The old session is still running, but its later end will not mark the run interrupted. This only happens when a crew-record.py write fails during rollback, which is an unusual path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if moved.returncode != 0:\n        say(\"%s FAIL rollback: %s\" % (utc_now(), err(moved)))\n        return \"failed\"",
+            "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+            "        stop_waiter(waiter)",
+            "    park = run.get(\"park\")\n    if isinstance(park, dict) and park.get(\"from_session\") == session_id:\n        return True",
+            "        if not is_live(run) or is_retired(run, session_id):\n            return False"
+          ],
+          "rationale": "When `end_park` returns \"failed\", `run.park` stays set, `fail()` still stops the waiter, and `is_retired` in session-end.py returns True for `run.park.from_session`. The old session is still running, but its later end will not mark the run interrupted. This only happens when a crew-record.py write fails during rollback, which is an unusual path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          2,
+          3
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 0,
+              "claim": "If the `launch.session_id` write fails after the `launch.tab` write succeeded, the rollback stops the waiter but leaves the orchestrator item's `launch.tab` pointing at the stopped waiter's tab.",
+              "explanation": "`fail()` only rolls back the state.json park and stops the waiter, so the item keeps the dead waiter's tab and later focus/stop calls target it while the old session continues.",
+              "suggested_fix": "In the rollback, write the item's old `launch.tab` (identity['handle']) back when the `launch.tab` write had already succeeded, or write both keys in one call.",
+              "severity": "suggestion"
+            },
+            {
+              "member_index": 1,
+              "claim": "The helper's orchestrator writes are unconditional, so a concurrent unpark by the old session can be overwritten and the item ends up naming the waiter that the unpark stopped.",
+              "explanation": "The unpark reads `park.waiter`, stops it and writes its own id and tab, but the helper's later `item set` calls can land afterwards, so `stop_old` skips and the item points at a stopped waiter.",
+              "suggested_fix": "After the orch writes, re-check `park_holder`; if another session woke the run, write that session's values back, or let the unpark write the item last.",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6066895887,
+      "review_url": "https://github.com/jerridan/crew/pull/196#pullrequestreview-6066895887",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 139605117225
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 1104,
+        "end_line": 1111,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The rollback entry is built from the helper's first copy of the park, where `waiter` is null. A waiter that started and then got stopped is never named in `run.parks`, so `spend.py` does not price it.",
+        "evidence": "    entry = dict(park, failed=failed)",
+        "suggested_fix": "Pass the started waiter to `end_park` and store it in the failed entry.",
+        "explanation": "`waiter_ids` only reads `park.waiter`/`parks[].waiter`, so the cost of a waiter that ran and was rolled back is lost.",
+        "needs_context": false,
+        "fingerprint": "520c0de8175c8998",
+        "severity": "suggestion",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "entry = dict(park, failed=failed)",
+            "\"waiter\": None}",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "waiter = park.get(\"waiter\") if isinstance(park, dict) else None",
+            "parks = [run.get(\"park\")] + (run.get(\"parks\") if isinstance(run.get(\"parks\"), list) else [])"
+          ],
+          "rationale": "The claim holds. In the helper, `fail` calls `end_park` with the `park` dict passed in at launch, where `waiter` is None. So when the rollback comes after the window starts (the record or orch step fails), the `run.parks` entry has `waiter: null`, even when `park.waiter` was already written to state. `spend.py`'s `waiter_ids` gets waiter ids only from `park.waiter` and `parks[].waiter`, so it never prices that waiter. This is a cost-accounting gap on an unusual rollback path.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "span_text": "def end_park(rec, park, failed, say): \"\"\"Move this park to run.parks with `failed`, and set run.park null. Only while it is this park. Return \"moved\", \"gone\" when the park was not this park any more, or \"failed\". \"\"\" entry = dict(park, failed=failed) conditions = park_conditions(park[\"at\"], park[\"from_session\"]) moved = record(rec, \"run\", \"append\", \"parks\", json.dumps(entry), *conditions)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/references/record-format.md",
+        "start_line": 755,
+        "end_line": 755,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The `parks` row says that only a park that failed after the waiter started holds `failed`, but the code also writes `failed` for failures before the waiter starts.",
+        "evidence": "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+        "suggested_fix": "Write: \"A park that failed holds `failed: {step, at, error}` in place of `woke`.\"",
+        "explanation": "`end_park` writes a `failed` entry for the `helper`, `prompt`, `settings` and `window` failures, and none of these has a waiter; `crew-step.md` and `test-session-end.sh` both seed a failed entry with `waiter: null`.",
+        "needs_context": false,
+        "fingerprint": "96c3d6a5fcb4392d",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`.",
+            "out.fail(\"helper\", str(exc))\n        end_park(rec, park, {\"step\": \"helper\", \"at\": utc_now(), \"error\": str(exc)}, out.line)"
+          ],
+          "rationale": "The code calls end_park with failed for the \\\"helper\\\" step, which fails before any waiter starts, and `fail(step, ...)` does the same for other steps. So the doc's \\\"after the waiter started\\\" is too narrow.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "| `parks` | a list, one entry per ended park: the `park` object plus `woke: {at, by, session_id}`. A park that failed after the waiter started holds `failed: {step, at, error}` in place of `woke`. Absent until the first park ends. |",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 1235,
+        "end_line": 1241,
+        "category": "bug",
+        "severity_estimate": "blocking",
+        "confidence": "medium",
+        "claim": "If the `launch.session_id` write fails after the `launch.tab` write succeeded, the rollback stops the waiter but leaves the orchestrator item's `launch.tab` pointing at the stopped waiter's tab.",
+        "evidence": "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)\n                if done.returncode != 0:\n                    return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+        "explanation": "`fail()` only rolls back the state.json park and stops the waiter, so the item keeps the dead waiter's tab and later focus/stop calls target it while the old session continues.",
+        "needs_context": false,
+        "fingerprint": "c3804628c6f9fd58",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for key in (\"launch.tab\", \"launch.session_id\"):",
+            "return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter)",
+            "stop_waiter(waiter)"
+          ],
+          "rationale": "The loop writes launch.tab first. If the launch.session_id write then fails, fail() ends the park and stops the waiter, but it never restores the item's old launch.tab. The item is left pointing at the dead waiter tab while the old session keeps running.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "elif orch: for key in (\"launch.tab\", \"launch.session_id\"): value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"] done = orch_set(orch, key, value) if done.returncode != 0: return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter) log(\"ok\", \"orch\", \"set %s\" % key)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "In the rollback, write the item's old `launch.tab` (identity['handle']) back when the `launch.tab` write had already succeeded, or write both keys in one call."
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 1162,
+        "end_line": 1173,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "If `end_park` fails (it returns \"failed\"), `run.park` stays set and `fail()` still stops the waiter. The `SessionEnd` hook then treats the live old session as retired, so its later death never marks the run interrupted.",
+        "evidence": "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+        "suggested_fix": "Retry the rollback, or log the state clearly and do not leave a park that names a live session as retired.",
+        "explanation": "`is_retired` returns True for `run.park.from_session`, so a park that did not roll back makes the old session's real end invisible.",
+        "needs_context": false,
+        "fingerprint": "819e6a303caae05a",
+        "severity": "suggestion",
+        "score": 82,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if moved.returncode != 0:\n        say(\"%s FAIL rollback: %s\" % (utc_now(), err(moved)))\n        return \"failed\"",
+            "        ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say)\n        if not waiter:\n            return",
+            "        stop_waiter(waiter)",
+            "    park = run.get(\"park\")\n    if isinstance(park, dict) and park.get(\"from_session\") == session_id:\n        return True",
+            "        if not is_live(run) or is_retired(run, session_id):\n            return False"
+          ],
+          "rationale": "When `end_park` returns \"failed\", `run.park` stays set, `fail()` still stops the waiter, and `is_retired` in session-end.py returns True for `run.park.from_session`. The old session is still running, but its later end will not mark the run interrupted. This only happens when a crew-record.py write fails during rollback, which is an unusual path.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "span_text": "def fail(step, error, waiter=None): log(\"FAIL\", step, error) ended = end_park(rec, park, {\"step\": step, \"at\": utc_now(), \"error\": error}, say) if not waiter: return held, woke_by = park_holder(rec, park) if ended == \"gone\" else (None, None) if held == \"woke\" and woke_by == waiter[\"session_id\"]: # The waiter woke the run first and holds it now: it stays, and the old session goes. log(\"ok\", \"rollback\", \"skipped, the waiter %s woke the run\" % waiter[\"session_id\"]) stop_old() return stop_waiter(waiter)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 1235,
+        "end_line": 1245,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The helper's orchestrator writes are unconditional, so a concurrent unpark by the old session can be overwritten and the item ends up naming the waiter that the unpark stopped.",
+        "evidence": "        elif orch:\n            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+        "explanation": "The unpark reads `park.waiter`, stops it and writes its own id and tab, but the helper's later `item set` calls can land afterwards, so `stop_old` skips and the item points at a stopped waiter.",
+        "needs_context": false,
+        "fingerprint": "d7daabc7534c6f16",
+        "severity": "suggestion",
+        "score": 72,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            for key in (\"launch.tab\", \"launch.session_id\"):\n                value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"]\n                done = orch_set(orch, key, value)",
+            "        for key, value in ((\"launch.session_id\", caller), (\"launch.tab\", tab)):\n            done = orch_set(orch, key, value)",
+            "        stopped = run([sys.executable, LAUNCHER, \"stop\", waiter[\"tab\"], \"--session-id\", waiter[\"session_id\"]])",
+            "        if held == \"woke\" and woke_by == park.get(\"from_session\"):\n            log(\"ok\", \"stop\", \"skipped, the old session %s woke the run\" % woke_by)\n            return"
+          ],
+          "rationale": "After the guarded park.waiter write, the helper writes launch.tab and launch.session_id with no check of the record. An unpark by the old session that read the waiter stops it and writes its own values, and these can be overwritten by the helper's later writes. stop_old then skips, so the item names a stopped waiter. The race window is narrow, but nothing in the code prevents it.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "span_text": "elif orch: for key in (\"launch.tab\", \"launch.session_id\"): value = waiter[\"tab\"] if key == \"launch.tab\" else waiter[\"session_id\"] done = orch_set(orch, key, value) if done.returncode != 0: return fail(\"orch\", \"%s: %s\" % (key, err(done)), waiter) log(\"ok\", \"orch\", \"set %s\" % key) time.sleep(float(inputs.get(\"delay\") or 0)) log(\"ok\", \"wait\", \"%s seconds\" % inputs.get(\"delay\")) stop_old()",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "After the orch writes, re-check `park_holder`; if another session woke the run, write that session's values back, or let the unpark write the item last."
+      },
+      {
+        "file": "skills/project-lead/scripts/test-crew-step.py",
+        "start_line": 1556,
+        "end_line": 1557,
+        "category": "test",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The R20 source-grep check was loosened: any write-mode open() line containing \"park\" now passes, so a new unrelated write to a park-named path would pass.",
+        "evidence": "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+        "suggested_fix": "Match the specific park_prompt and park_log writes instead of any line containing \"park\".",
+        "explanation": "A broader substring match weakens the guard that the script writes only its own files.",
+        "needs_context": false,
+        "fingerprint": "c97968d4e727b5be",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\",",
+            "bool(text) and all(\"worktrees\" in x or \"patch\" in x or \"park\" in x for x in writes))",
+            "with open(park_prompt, \"w\", encoding=\"utf-8\") as handle:"
+          ],
+          "rationale": "The change adds `or \"park\" in x` to the R20 guard, so any write-mode open() line that holds the substring \"park\" passes. In a script full of park_* names, this is broader than the one actual write, `open(park_prompt, \"w\", ...)`. The old guard was already a loose substring match (\"patch\", \"worktrees\"), so this widens a weak check a little and does not break anything. It is a cheap fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "check(\"R20 every write-mode open() names worktrees, the verify patch or a park file\", bool(text) and all(\"worktrees\" in x or \"patch\" in x or \"park\" in x for x in writes))",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 1,
+        "end_line": 1,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "Production code contains a test-only failure switch (CREW_PARK_TEST_FAIL) instead of using a stub, and the test for the waiter-write rollback relies on it.",
+        "evidence": "if os.environ.get(\"CREW_PARK_TEST_FAIL\") == \"waiter\":",
+        "suggested_fix": "Use the record wrapper stub (STUB_RECORD_FAIL, as the unpark test does) to fail the park.waiter write, and remove the env switch.",
+        "explanation": "The failed-waiter-write rollback test exercises an injected branch rather than a real crew-record failure, so it can pass while real failure handling breaks.",
+        "needs_context": false,
+        "fingerprint": "f6cc22ca4dba13dd",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if os.environ.get(\"CREW_PARK_TEST_FAIL\") == \"waiter\":",
+            "return fail(\"record\", \"the test switch CREW_PARK_TEST_FAIL=waiter\", waiter)"
+          ],
+          "rationale": "The production helper has a test-only env switch that forces the waiter-write failure, and the rollback test uses it. The test therefore skips the real record failure path, though the fail() rollback code it reaches is the real one.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "#!/usr/bin/env python3",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9223,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 54097,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0054192,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1505,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 53610,
+            "webSearchRequests": 0,
+            "costUSD": 0.2296202,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2350394
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7531,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 51254,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0051349,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 326,
+            "cacheReadInputTokens": 10487,
+            "cacheCreationInputTokens": 50763,
+            "webSearchRequests": 0,
+            "costUSD": 0.4147294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 76,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4198643
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 10064,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 51266,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0051361,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 628,
+            "cacheReadInputTokens": 10293,
+            "cacheCreationInputTokens": 50775,
+            "webSearchRequests": 0,
+            "costUSD": 0.4208266,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 304,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.42596269999999997
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4514,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13120,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001321,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 558,
+            "cacheReadInputTokens": 21363,
+            "cacheCreationInputTokens": 12897,
+            "webSearchRequests": 0,
+            "costUSD": 0.0593123,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 50,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0606333
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 16231,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 51278,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0051373,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 977,
+            "cacheReadInputTokens": 132734,
+            "cacheCreationInputTokens": 51596,
+            "webSearchRequests": 0,
+            "costUSD": 0.45887880000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 377,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.46401610000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8925,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 51274,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0051374,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1072,
+            "cacheReadInputTokens": 73311,
+            "cacheCreationInputTokens": 51459,
+            "webSearchRequests": 0,
+            "costUSD": 0.2238951,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 442,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2290325
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 19728,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 77905,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0078000000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 2346,
+            "cacheReadInputTokens": 189304,
+            "cacheCreationInputTokens": 80762,
+            "webSearchRequests": 0,
+            "costUSD": 0.3654504,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1563,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3732503999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3402,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28958,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029058000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 423,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28467,
+            "webSearchRequests": 0,
+            "costUSD": 0.1185387,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1214445
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5400,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 737,
+            "cacheReadInputTokens": 74614,
+            "cacheCreationInputTokens": 31475,
+            "webSearchRequests": 0,
+            "costUSD": 0.1407434,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 30963,
+            "outputTokens": 412,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0033023,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 394,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1440457
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3355,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29108,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029208,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 458,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28617,
+            "webSearchRequests": 0,
+            "costUSD": 0.1194887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 93,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1224095
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 9335,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13110,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013225,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 565,
+            "cacheReadInputTokens": 21349,
+            "cacheCreationInputTokens": 13085,
+            "webSearchRequests": 0,
+            "costUSD": 0.12026579999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 20,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1215883
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7425,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25642,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025747000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1012,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 25151,
+            "webSearchRequests": 0,
+            "costUSD": 0.1111647,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 451,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1137394
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 11867,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28960,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029100000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 759,
+            "cacheReadInputTokens": 37199,
+            "cacheCreationInputTokens": 28809,
+            "webSearchRequests": 0,
+            "costUSD": 0.2531078,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 180,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2560178
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12004,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29098,
+            "outputTokens": 320,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030698,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 300,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 745,
+            "cacheReadInputTokens": 37337,
+            "cacheCreationInputTokens": 28859,
+            "webSearchRequests": 0,
+            "costUSD": 0.2532554,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 241,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.25632520000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17755,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25646,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025751000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1402,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 25151,
+            "webSearchRequests": 0,
+            "costUSD": 0.2301294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 909,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2327045
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 84060,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 51270,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0051365000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 16,
+            "outputTokens": 7542,
+            "cacheReadInputTokens": 493685,
+            "cacheCreationInputTokens": 69450,
+            "webSearchRequests": 0,
+            "costUSD": 0.805241,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 3690,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.8103775
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4365,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24882,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025007000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 589,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 24391,
+            "webSearchRequests": 0,
+            "costUSD": 0.10389469999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10639539999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5385,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25544,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025649,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 624,
+            "cacheReadInputTokens": 33787,
+            "cacheCreationInputTokens": 25430,
+            "webSearchRequests": 0,
+            "costUSD": 0.11134669999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 127,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11391159999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6112,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25445,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002555,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 727,
+            "cacheReadInputTokens": 33688,
+            "cacheCreationInputTokens": 25592,
+            "webSearchRequests": 0,
+            "costUSD": 0.1130148,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 208,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1155698
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7157,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24833,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024973000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1037,
+            "cacheReadInputTokens": 33076,
+            "cacheCreationInputTokens": 24983,
+            "webSearchRequests": 0,
+            "costUSD": 0.11362159999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 245,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11611889999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14474,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25447,
+            "outputTokens": 235,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026622000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 215,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 900,
+            "cacheReadInputTokens": 33686,
+            "cacheCreationInputTokens": 26072,
+            "webSearchRequests": 0,
+            "costUSD": 0.2333292,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 251,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2359914
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 8,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15663,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25534,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025639000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 992,
+            "cacheReadInputTokens": 33773,
+            "cacheCreationInputTokens": 25982,
+            "webSearchRequests": 0,
+            "costUSD": 0.2344666,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 319,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2370305
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15089,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24827,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024952,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1404,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 24332,
+            "webSearchRequests": 0,
+            "costUSD": 0.2236174,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 814,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2261126
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3517,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 2082,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0002202,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 518,
+            "cacheReadInputTokens": 1062,
+            "cacheCreationInputTokens": 1595,
+            "webSearchRequests": 0,
+            "costUSD": 0.0116702,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 39,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0118904
+      }
+    ],
+    "total_cost_usd": 5.5494717,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 605,
+      "scope": 18,
+      "triage": 10346,
+      "find_verify": 109394,
+      "merge": 4443
+    },
+    "errors": []
+  }
+}

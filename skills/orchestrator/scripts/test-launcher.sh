@@ -413,7 +413,9 @@ except OSError:
 sys.exit(1)
 PY2
 }
-export CREW_LAUNCHER_START_WAIT=1
+# A wait of 5 s: each read of the wait has a timeout of at least 1 s, and a slow machine can
+# take longer than that to run a stub. A short wait turns a slow stub into exit 6 and not 10.
+export CREW_LAUNCHER_START_WAIT=5
 # field <name>: one field of the start output, as JSON.
 field() { python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$T/out" "$1" 2>/dev/null; }
 
@@ -801,7 +803,7 @@ reset_stub; auto_tab; : > "$STUB_DIR/no-claude"
 TERM_PROGRAM=iTerm.app run start --name nc1 --model m --principal p --checkout "$CO"
 lf=$(launch_file)
 r=1; [ "$rc" = 10 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:ABC-123' "$T/err" && grep -sqF 'ttysAUTO' "$T/err" \
-  && grep -sqE '(^|[^0-9.])1 s' "$T/err" && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" \
+  && grep -sqE '(^|[^0-9.])5 s' "$T/err" && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log" \
   && [ -d "$CO/.claude/worktrees/nc1" ] && [ ! -s "$T/out" ] && [ -n "$lf" ] && [ ! -e "$lf" ] && r=0
 check 'no claude on the tab tty: exit 10, one line with the tab, the tty and the wait, the tab closed, the file removed, the worktree kept' $r
 
@@ -851,7 +853,7 @@ reset_stub; auto_tab
 CREW_LAUNCHER_START_WAIT=abc TMUX=/tmp/t,1,0 run start --name bw4 --model m --principal p --checkout "$CO"
 check 'the wait variable does not apply on tmux' $([ "$rc" = 0 ]; echo $?)
 reset_stub; auto_tab
-CREW_LAUNCHER_START_WAIT=0.5 TERM_PROGRAM=iTerm.app run start --name bw5 --model m --principal p --checkout "$CO"
+CREW_LAUNCHER_START_WAIT=20.5 TERM_PROGRAM=iTerm.app run start --name bw5 --model m --principal p --checkout "$CO"
 check 'a decimal wait is valid' $([ "$rc" = 0 ]; echo $?)
 
 # A window and a resume whose claude never starts: exit 10, one line, the tab closes.

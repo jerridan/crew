@@ -129,7 +129,7 @@ setup() {
 
 # check <label> <want> : want is `none` (no output), `no-deploy-wf` (the no
 # deploy workflow text) or `no-deploy-wait` (the 10-minute text), each exactly
-# one line, `deployed`, `deployed:<id>:<n>` (one line, naming run <id> and
+# one line, `deployed`, `deployed:<id>[:<n>]` (one line, naming run <id> and
 # <n> succeeded runs), `failed:<id>` (one deploy-failed line naming <id>) or
 # `timeout`. REC=<dir> before a call picks another record.
 check() {
@@ -143,7 +143,9 @@ check() {
     no-deploy-wait) [ "$lines" = 1 ] && case "$out" in "no-deploy 7 - "*"or deploy runs") true ;; *) false ;; esac && ok=1 ;;
     deployed) case "$out" in "deployed "*) ok=1 ;; esac ;;
     deployed:*) w=${2#deployed:}; n=${w#*:}; w=${w%%:*}
-      [ "$lines" = 1 ] && case "$out" in "deployed $w - "*"$n deploy runs succeeded") true ;; *) false ;; esac && ok=1 ;;
+      # `deployed:<id>:<n>` also names the count of succeeded runs.
+      [ "$n" != "$w" ] && n=" $n deploy runs succeeded" || n=''
+      [ "$lines" = 1 ] && case "$out" in "deployed $w - "*"$n") true ;; *) false ;; esac && ok=1 ;;
     failed:*) w=${2#failed:}
       [ "$lines" = 1 ] && case "$out" in "deploy-failed $w - "*) true ;; *) false ;; esac && ok=1 ;;
     timeout) [ "$lines" = 1 ] && case "$out" in "deploy-timeout "*) true ;; *) false ;; esac && ok=1 ;;
@@ -300,7 +302,7 @@ NEWOK=$(run 1 'Deploy CD' workflow_dispatch completed success $T2 55)
 NEWBAD=$(run 2 'Deploy CD' schedule completed failure $T3 55)
 WFRUNS=$(jq -nc --argjson o "$OLD" --argjson a "$NEWOK" '{workflow_runs: ($o[0:110] + [$a] + $o[110:])}')
 export REC="$T/rec-named"
-setup 3 "$NODEP" "$WFN" "$WFRUNS"; check 'AC4 named workflow run on page 2' deployed:1:1
+setup 3 "$NODEP" "$WFN" "$WFRUNS"; check 'AC4 named workflow run on page 2' deployed:1
 total=$((total + 1))
 if grep -q 'actions/workflows/55/runs' "$STUB_DIR/calls" && ! grep -q 'actions/runs' "$STUB_DIR/calls"; then
   echo "ok   named rung reads the workflow's runs only"
